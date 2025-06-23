@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="rank-lines" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+      <path d="M0 20 L100 20" stroke="#ffffff" stroke-width="1" opacity="0.1"/>
+      <path d="M0 40 L100 40" stroke="#ffffff" stroke-width="1" opacity="0.1"/>
+      <path d="M0 60 L100 60" stroke="#ffffff" stroke-width="1" opacity="0.1"/>
+      <path d="M0 80 L100 80" stroke="#ffffff" stroke-width="1" opacity="0.1"/>
+    </pattern>
+  </defs>
+  <rect x="0" y="0" width="100" height="100" fill="url(#rank-lines)"/>
+</svg> 
