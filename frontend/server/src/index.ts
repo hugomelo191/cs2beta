@@ -22,8 +22,7 @@ import gamesRoutes from './routes/games.js';
 import faceitRoutes from './routes/faceit.js';
 
 // Import middleware
-import { errorHandler } from './middleware/errorHandler.js';
-import { notFound } from './middleware/notFound.js';
+import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Import database connection
 import { db } from './db/connection.js';
