@@ -61,8 +61,21 @@ export function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    firstName: '',
+    lastName: '',
     country: 'pt',
-    acceptTerms: false
+    acceptTerms: false,
+    nickname: '',
+    faceitNickname: '',
+    age: '',
+    position: '',
+    bio: '',
+    socials: {
+      steam: '',
+      discord: '',
+      twitter: '',
+      twitch: ''
+    }
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -84,13 +97,69 @@ export function RegisterPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleSocialChange = (platform: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      socials: {
+        ...prev.socials,
+        [platform]: value
+      }
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
     
+    // Validações
+    if (formData.password !== formData.confirmPassword) {
+      setError('As passwords não coincidem.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.nickname.trim()) {
+      setError('O nickname é obrigatório.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.faceitNickname.trim()) {
+      setError('O nickname do Faceit é obrigatório.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      setError('Nome e apelido são obrigatórios.');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      const success = await register(formData.username, formData.email, formData.password);
+      // Preparar dados para envio
+      const registrationData = {
+        email: formData.email,
+        username: formData.username,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        country: formData.country,
+        nickname: formData.nickname,
+        faceitNickname: formData.faceitNickname,
+        age: formData.age ? parseInt(formData.age) : undefined,
+        position: formData.position || undefined,
+        bio: formData.bio || undefined,
+        socials: Object.keys(formData.socials).reduce((acc, key) => {
+          if (formData.socials[key as keyof typeof formData.socials]?.trim()) {
+            acc[key] = formData.socials[key as keyof typeof formData.socials];
+          }
+          return acc;
+        }, {} as Record<string, string>)
+      };
+
+      const success = await register(registrationData);
       if (success) {
         setSuccess(true);
         setShowConfetti(true);
@@ -98,7 +167,7 @@ export function RegisterPage() {
           navigate('/');
         }, 2000);
       } else {
-        setError('Este email já está registado. Tenta outro email.');
+        setError('Erro no registo. Verifica se o email ou nickname já estão em uso.');
       }
     } catch (err) {
       setError('Erro ao criar conta. Tenta novamente.');
@@ -358,6 +427,44 @@ export function RegisterPage() {
               </div>
             </motion.div>
 
+            {/* Campos Nome */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.35 }}
+              >
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Primeiro Nome
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 transition-all duration-300"
+                  placeholder="João"
+                  required
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.35 }}
+              >
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Último Nome
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 transition-all duration-300"
+                  placeholder="Silva"
+                  required
+                />
+              </motion.div>
+            </div>
+
             {/* Campo País */}
             <motion.div
               className="mb-6"
@@ -376,6 +483,129 @@ export function RegisterPage() {
                 <option value="pt">🇵🇹 Portugal</option>
                 <option value="es">🇪🇸 Espanha</option>
               </select>
+            </motion.div>
+
+            {/* SEÇÃO PERFIL DE JOGADOR */}
+            <motion.div
+              className="mb-6 p-4 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 rounded-xl border border-cyan-500/20"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.45 }}
+            >
+              <h3 className="text-cyan-400 font-semibold mb-4 flex items-center gap-2">
+                <Gamepad2 className="w-5 h-5" />
+                Perfil de Jogador (Obrigatório)
+              </h3>
+
+              {/* Nickname */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Nickname *
+                </label>
+                <input
+                  type="text"
+                  value={formData.nickname}
+                  onChange={(e) => handleInputChange('nickname', e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300"
+                  placeholder="O teu nickname no CS2"
+                  required
+                />
+              </div>
+
+              {/* Faceit Nickname */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <span className="flex items-center gap-2">
+                    🎯 Nickname do Faceit *
+                    <span className="text-xs text-cyan-400 bg-cyan-400/10 px-2 py-1 rounded-lg">
+                      Stats Automáticas
+                    </span>
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.faceitNickname}
+                  onChange={(e) => handleInputChange('faceitNickname', e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300"
+                  placeholder="O teu username no Faceit"
+                  required
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  📊 Vamos buscar automaticamente as tuas estatísticas e nível do Faceit
+                </p>
+              </div>
+
+              {/* Idade e Posição */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Idade
+                  </label>
+                  <input
+                    type="number"
+                    min="13"
+                    max="50"
+                    value={formData.age}
+                    onChange={(e) => handleInputChange('age', e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300"
+                    placeholder="25"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Posição
+                  </label>
+                  <select
+                    value={formData.position}
+                    onChange={(e) => handleInputChange('position', e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300"
+                  >
+                    <option value="">Selecionar...</option>
+                    <option value="IGL">🧠 IGL (In-Game Leader)</option>
+                    <option value="AWP">🔫 AWP</option>
+                    <option value="Rifler">⚡ Rifler</option>
+                    <option value="Support">🛡️ Support</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Bio */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Bio
+                </label>
+                <textarea
+                  value={formData.bio}
+                  onChange={(e) => handleInputChange('bio', e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300 resize-none"
+                  placeholder="Conta-nos sobre ti e o teu estilo de jogo..."
+                  maxLength={500}
+                />
+              </div>
+
+              {/* Redes Sociais */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Redes Sociais (Opcional)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                                     <input
+                     type="url"
+                     value={formData.socials.steam}
+                     onChange={(e) => handleSocialChange('steam', e.target.value)}
+                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300 text-sm"
+                     placeholder="🎮 Steam Profile"
+                   />
+                   <input
+                     type="text"
+                     value={formData.socials.discord}
+                     onChange={(e) => handleSocialChange('discord', e.target.value)}
+                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition-all duration-300 text-sm"
+                     placeholder="💬 Discord#1234"
+                   />
+                </div>
+              </div>
             </motion.div>
 
             {/* Checkbox Termos */}

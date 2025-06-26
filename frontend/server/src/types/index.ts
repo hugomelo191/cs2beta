@@ -327,12 +327,22 @@ export const LoginSchema = z.object({
 });
 
 export const RegisterSchema = z.object({
+  // User data
   email: z.string().email(),
   username: z.string().min(3).max(100),
   password: z.string().min(6),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  firstName: z.string().min(2).max(100),
+  lastName: z.string().min(2).max(100),
   country: z.string().length(2).default('pt'),
+  
+  // Mandatory player data
+  nickname: z.string().min(2).max(50),
+  faceitNickname: z.string().min(2).max(50),
+  realName: z.string().optional(),
+  age: z.number().int().min(13).max(50).optional(),
+  position: z.enum(['IGL', 'AWP', 'Rifler', 'Support']).optional(),
+  bio: z.string().max(500).optional(),
+  socials: z.record(z.string()).optional(),
 });
 
 // API Response types

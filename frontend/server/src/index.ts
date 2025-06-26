@@ -19,6 +19,7 @@ import newsRoutes from './routes/news.js';
 import casterRoutes from './routes/casters.js';
 import draftRoutes from './routes/draft.js';
 import gamesRoutes from './routes/games.js';
+import faceitRoutes from './routes/faceit.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -120,6 +121,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/casters', casterRoutes);
 app.use('/api/draft', draftRoutes);
 app.use('/api/games', gamesRoutes);
+app.use('/api/faceit', faceitRoutes);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {

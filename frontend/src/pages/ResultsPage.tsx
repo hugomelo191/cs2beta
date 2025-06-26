@@ -1,549 +1,783 @@
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
 import { 
-  Search, 
-  Filter, 
-  Calendar, 
-  Trophy, 
-  Users, 
   TrendingUp, 
   TrendingDown,
+  Trophy, 
+  Users, 
+  Target, 
+  Clock, 
+  MapPin, 
+  Award, 
+  Zap, 
+  Eye, 
+  Calendar,
+  ChevronRight,
+  Play,
+  BarChart3,
+  Activity,
+  Flame,
+  Crown,
   Star,
-  Clock,
-  MapPin,
-  Award,
-  Target,
-  Zap,
-  Eye,
-  ChevronDown,
-  ChevronUp
+  Shield,
+  Sword
 } from 'lucide-react';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { FilterPanel, FilterGroup } from '@/components/ui/FilterPanel';
+import { StatsCard } from '@/components/ui/StatsCard';
 
-// Dados mock para demonstração
-const mockResults = [
+// Enhanced mock data for results
+const mockMatches = [
+  // LIVE MATCHES
   {
     id: 1,
-    tournament: 'CS2 Championship 2025',
-    date: '2025-01-15',
-    time: '20:00',
+    tournament: 'CS2 Pro Series',
+    phase: 'Group Stage',
+    date: '2024-03-15',
+    time: '21:30',
+    status: 'live',
+    live: true,
+    featured: false,
     team1: {
-      name: 'Team Alpha',
-      logo: '/logos/academiacs.svg',
-      score: 16,
-      region: 'Portugal',
-      players: ['Player1', 'Player2', 'Player3', 'Player4', 'Player5']
+      name: 'Ronin PT',
+      logo: '/logos/roninpt.svg',
+      score: 1,
+      region: 'Portugal', 
+      rank: 4,
+      rating: 1698
     },
     team2: {
-      name: 'Beta Squad',
-      logo: '/logos/iberianforce.svg',
-      score: 14,
+      name: 'Phoenix Squad',
+      logo: '/logos/default.svg',
+      score: 1,
       region: 'Espanha',
-      players: ['Pro1', 'Pro2', 'Pro3', 'Pro4', 'Pro5']
+      rank: 6,
+      rating: 1589
     },
     maps: [
-      { name: 'de_dust2', score1: 16, score2: 14 },
-      { name: 'de_mirage', score1: 13, score2: 16 },
-      { name: 'de_inferno', score1: 16, score2: 12 }
+      { name: 'de_dust2', team1Score: 16, team2Score: 13, duration: '39:45' },
+      { name: 'de_mirage', team1Score: 12, team2Score: 16, duration: '44:12' },
+      { name: 'de_inferno', team1Score: 8, team2Score: 6, duration: 'Live', inProgress: true }
     ],
-    status: 'completed',
-    winner: 'team1',
-    highlights: ['Player1 - 4K clutch', 'Pro2 - Ace round', 'Team Alpha - Perfect round']
+    mvp: { name: 'RoninRifle', kills: 34, deaths: 28, adr: 78.5, rating: 1.15 },
+    viewers: 3240,
+    highlights: ['Intense overtime on Mirage', 'Clutch moments on Dust2'],
+    prizePool: '€500'
   },
   {
     id: 2,
-    tournament: 'Winter Cup',
-    date: '2025-01-14',
-    time: '19:30',
+    tournament: 'Iberian League',
+    phase: 'Quarter Finals',
+    date: '2024-03-15',
+    time: '20:00',
+    status: 'live',
+    live: true,
+    featured: true,
     team1: {
-      name: 'Gamma Force',
-      logo: '/logos/madrid-kings.svg',
-      score: 13,
+      name: 'Nova Five',
+      logo: '/logos/nova-five.svg',
+      score: 0,
       region: 'Portugal',
-      players: ['Gamer1', 'Gamer2', 'Gamer3', 'Gamer4', 'Gamer5']
+      rank: 2,
+      rating: 1802
     },
     team2: {
-      name: 'Delta Elite',
-      logo: '/logos/nova-five.svg',
-      score: 16,
+      name: 'Madrid Kings',
+      logo: '/logos/madrid-kings.svg',
+      score: 0,
       region: 'Espanha',
-      players: ['Elite1', 'Elite2', 'Elite3', 'Elite4', 'Elite5']
+      rank: 3,
+      rating: 1756
     },
     maps: [
-      { name: 'de_ancient', score1: 13, score2: 16 },
-      { name: 'de_vertigo', score1: 16, score2: 14 },
-      { name: 'de_nuke', score1: 12, score2: 16 }
+      { name: 'de_ancient', team1Score: 3, team2Score: 2, duration: 'Live', inProgress: true }
     ],
-    status: 'completed',
-    winner: 'team2',
-    highlights: ['Elite1 - 1v4 clutch', 'Gamer3 - Triple kill', 'Delta Elite - Comeback']
+    mvp: { name: 'TBD', kills: 0, deaths: 0, adr: 0, rating: 0 },
+    viewers: 8950,
+    highlights: ['Match just started'],
+    prizePool: '€1,500'
   },
+
+  // UPCOMING MATCHES  
   {
     id: 3,
-    tournament: 'Spring League',
-    date: '2025-01-13',
-    time: '21:00',
-    team1: {
-      name: 'Omega Warriors',
-      logo: '/logos/roninpt.svg',
-      score: 16,
-      region: 'Portugal',
-      players: ['Warrior1', 'Warrior2', 'Warrior3', 'Warrior4', 'Warrior5']
-    },
-    team2: {
-      name: 'Phoenix Rising',
-      logo: '/logos/default.svg',
-      score: 8,
-      region: 'Espanha',
-      players: ['Phoenix1', 'Phoenix2', 'Phoenix3', 'Phoenix4', 'Phoenix5']
-    },
-    maps: [
-      { name: 'de_dust2', score1: 16, score2: 8 },
-      { name: 'de_mirage', score1: 16, score2: 10 }
-    ],
-    status: 'completed',
-    winner: 'team1',
-    highlights: ['Warrior1 - Dominant performance', 'Omega Warriors - Perfect defense']
-  },
-  {
-    id: 4,
-    tournament: 'CS2 Championship 2025',
-    date: '2025-01-12',
-    time: '18:00',
+    tournament: 'Iberian Championship 2024',
+    phase: 'Finals',
+    date: '2024-03-16',
+    time: '20:00',
+    status: 'upcoming',
+    live: false,
+    featured: true,
     team1: {
       name: 'Team Alpha',
       logo: '/logos/academiacs.svg',
-      score: 16,
+      score: 0,
       region: 'Portugal',
-      players: ['Player1', 'Player2', 'Player3', 'Player4', 'Player5']
+      rank: 1,
+      rating: 1847
     },
     team2: {
-      name: 'Gamma Force',
-      logo: '/logos/madrid-kings.svg',
-      score: 12,
+      name: 'Nova Five',
+      logo: '/logos/nova-five.svg',
+      score: 0,
       region: 'Portugal',
-      players: ['Gamer1', 'Gamer2', 'Gamer3', 'Gamer4', 'Gamer5']
+      rank: 2,
+      rating: 1802
     },
     maps: [
-      { name: 'de_inferno', score1: 16, score2: 12 },
-      { name: 'de_ancient', score1: 16, score2: 14 }
+      { name: 'de_dust2', team1Score: 0, team2Score: 0, duration: 'Agendado' },
+      { name: 'de_mirage', team1Score: 0, team2Score: 0, duration: 'Agendado' },
+      { name: 'de_inferno', team1Score: 0, team2Score: 0, duration: 'Agendado' }
     ],
+    mvp: { name: 'TBD', kills: 0, deaths: 0, adr: 0, rating: 0 },
+    viewers: 0,
+    highlights: ['Final do campeonato ibérico', 'Battle of Portuguese teams'],
+    prizePool: '€5,000'
+  },
+  {
+    id: 4,
+    tournament: 'CS2 Pro Series',
+    phase: 'Group Stage',
+    date: '2024-03-16',
+    time: '19:00',
+    status: 'upcoming',
+    live: false,
+    featured: false,
+    team1: {
+      name: 'Iberian Force',
+      logo: '/logos/iberianforce.svg',
+      score: 0,
+      region: 'Espanha',
+      rank: 5,
+      rating: 1634
+    },
+    team2: {
+      name: 'Madrid Kings',
+      logo: '/logos/madrid-kings.svg',
+      score: 0,
+      region: 'Espanha',
+      rank: 3,
+      rating: 1756
+    },
+    maps: [
+      { name: 'de_mirage', team1Score: 0, team2Score: 0, duration: 'Agendado' },
+      { name: 'de_ancient', team1Score: 0, team2Score: 0, duration: 'Agendado' }
+    ],
+    mvp: { name: 'TBD', kills: 0, deaths: 0, adr: 0, rating: 0 },
+    viewers: 0,
+    highlights: ['Spanish derby', 'Important for group standings'],
+    prizePool: '€800'
+  },
+
+  // COMPLETED MATCHES
+  {
+    id: 5,
+    tournament: 'Winter League',
+    phase: 'Semifinals', 
+    date: '2024-03-14',
+    time: '19:00',
     status: 'completed',
-    winner: 'team1',
-    highlights: ['Player1 - MVP performance', 'Team Alpha - Strategic victory']
+    live: false,
+    featured: false,
+    team1: {
+      name: 'Team Alpha',
+      logo: '/logos/academiacs.svg',
+      score: 2,
+      region: 'Portugal',
+      rank: 1,
+      rating: 1847
+    },
+    team2: {
+      name: 'Iberian Force',
+      logo: '/logos/iberianforce.svg',
+      score: 0,
+      region: 'Espanha',
+      rank: 5,
+      rating: 1634
+    },
+    maps: [
+      { name: 'de_ancient', team1Score: 16, team2Score: 8, duration: '33:15' },
+      { name: 'de_vertigo', team1Score: 16, team2Score: 11, duration: '41:22' }
+    ],
+    mvp: { name: 'AlphaAce', kills: 51, deaths: 25, adr: 92.1, rating: 1.53 },
+    viewers: 8750,
+    highlights: ['Perfect round execution', 'Team Alpha dominance'],
+    prizePool: '€1,000'
+  },
+  {
+    id: 6,
+    tournament: 'Iberian Cup',
+    phase: 'Quarter Finals',
+    date: '2024-03-13',
+    time: '20:30',
+    status: 'completed',
+    live: false,
+    featured: false,
+    team1: {
+      name: 'Madrid Kings',
+      logo: '/logos/madrid-kings.svg',
+      score: 2,
+      region: 'Espanha',
+      rank: 3,
+      rating: 1756
+    },
+    team2: {
+      name: 'Ronin PT',
+      logo: '/logos/roninpt.svg',
+      score: 1,
+      region: 'Portugal',
+      rank: 4,
+      rating: 1698
+    },
+    maps: [
+      { name: 'de_dust2', team1Score: 16, team2Score: 12, duration: '42:30' },
+      { name: 'de_mirage', team1Score: 14, team2Score: 16, duration: '38:45' },
+      { name: 'de_inferno', team1Score: 16, team2Score: 8, duration: '35:20' }
+    ],
+    mvp: { name: 'MadridRifle', kills: 67, deaths: 41, adr: 89.3, rating: 1.42 },
+    viewers: 12400,
+    highlights: ['Epic comeback on Inferno', 'Incredible clutches', 'Overtime thriller on Mirage'],
+    prizePool: '€2,000'
+  },
+  {
+    id: 7,
+    tournament: 'Portuguese League',
+    phase: 'Regular Season',
+    date: '2024-03-12',
+    time: '21:00',
+    status: 'completed',
+    live: false,
+    featured: false,
+    team1: {
+      name: 'Nova Five',
+      logo: '/logos/nova-five.svg',
+      score: 2,
+      region: 'Portugal',
+      rank: 2,
+      rating: 1802
+    },
+    team2: {
+      name: 'Phoenix Squad',
+      logo: '/logos/default.svg',
+      score: 0,
+      region: 'Espanha',
+      rank: 6,
+      rating: 1589
+    },
+    maps: [
+      { name: 'de_mirage', team1Score: 16, team2Score: 10, duration: '36:20' },
+      { name: 'de_dust2', team1Score: 16, team2Score: 5, duration: '28:15' }
+    ],
+    mvp: { name: 'NovaSniper', kills: 42, deaths: 18, adr: 94.7, rating: 1.68 },
+    viewers: 5200,
+    highlights: ['NovaSniper masterclass', 'Dominant performance'],
+    prizePool: '€600'
   }
 ];
 
 const mockStats = {
-  totalMatches: 156,
-  totalTournaments: 8,
-  activeTeams: 24,
-  averageScore: 15.2,
-  mostPlayedMap: 'de_dust2',
-  totalPlayers: 120,
-  portugalWins: 89,
-  spainWins: 67
+  totalMatches: 847,
+  liveMatches: 2,
+  totalPrizePool: '€125,000',
+  totalViewers: 156420
 };
 
-const mockTopTeams = [
-  { name: 'Team Alpha', wins: 15, losses: 3, winRate: 83.3, region: 'Portugal' },
-  { name: 'Delta Elite', wins: 12, losses: 4, winRate: 75.0, region: 'Espanha' },
-  { name: 'Gamma Force', wins: 10, losses: 6, winRate: 62.5, region: 'Portugal' },
-  { name: 'Beta Squad', wins: 9, losses: 7, winRate: 56.3, region: 'Espanha' },
-  { name: 'Omega Warriors', wins: 8, losses: 8, winRate: 50.0, region: 'Portugal' }
-];
-
 export function ResultsPage() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTournament, setSelectedTournament] = useState('all');
-  const [selectedRegion, setSelectedRegion] = useState('all');
-  const [sortBy, setSortBy] = useState('date');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [selectedView, setSelectedView] = useState<'live' | 'upcoming' | 'completed'>('live');
   const [expandedMatch, setExpandedMatch] = useState<number | null>(null);
 
-  const tournaments = ['all', ...Array.from(new Set(mockResults.map(r => r.tournament)))];
-  const regions = ['all', 'Portugal', 'Espanha'];
-
-  const filteredResults = mockResults.filter(result => {
-    const matchesSearch = 
-      result.team1.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.team2.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      result.tournament.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesTournament = selectedTournament === 'all' || result.tournament === selectedTournament;
-    const matchesRegion = selectedRegion === 'all' || 
-      result.team1.region === selectedRegion || 
-      result.team2.region === selectedRegion;
-
-    return matchesSearch && matchesTournament && matchesRegion;
-  });
-
-  const sortedResults = [...filteredResults].sort((a, b) => {
-    switch (sortBy) {
-      case 'date':
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      case 'tournament':
-        return a.tournament.localeCompare(b.tournament);
-      case 'score':
-        return Math.max(b.team1.score, b.team2.score) - Math.max(a.team1.score, a.team2.score);
-      default:
-        return 0;
+  // Intelligent filters
+  const intelligentFilters: FilterGroup[] = [
+    {
+      id: 'tournament',
+      label: 'Torneio',
+      type: 'select',
+      options: [
+        { id: 'all', label: 'Todos', value: '' },
+        { id: 'iberian', label: '🏆 Iberian Championship', value: 'Iberian Championship 2024' },
+        { id: 'winter', label: '❄️ Winter League', value: 'Winter League' },
+        { id: 'pro', label: '⭐ CS2 Pro Series', value: 'CS2 Pro Series' }
+      ]
+    },
+    {
+      id: 'status',
+      label: 'Estado',
+      type: 'select',
+      options: [
+        { id: 'all', label: 'Todos', value: '' },
+        { id: 'live', label: '🔴 Ao Vivo', value: 'live' },
+        { id: 'completed', label: '✅ Terminados', value: 'completed' },
+        { id: 'featured', label: '⭐ Destacados', value: 'featured' }
+      ]
+    },
+    {
+      id: 'region',
+      label: 'Região',
+      type: 'multiselect',
+      options: [
+        { id: 'pt', label: '🇵🇹 Portugal', value: 'Portugal' },
+        { id: 'es', label: '🇪🇸 Espanha', value: 'Espanha' }
+      ]
     }
-  });
+  ];
 
-  const getWinnerClass = (result: any, team: 'team1' | 'team2') => {
-    if (result.winner === team) {
-      return 'text-green-400 font-bold';
-    }
-    return 'text-gray-400';
-  };
+  // Filter matches
+  const filteredMatches = useMemo(() => {
+    return mockMatches.filter(match => {
+      if (searchQuery && !match.team1.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          !match.team2.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          !match.tournament.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      if (filters.tournament && match.tournament !== filters.tournament) return false;
+      if (filters.status === 'live' && !match.live) return false;
+      if (filters.status === 'completed' && match.live) return false;
+      if (filters.status === 'featured' && !match.featured) return false;
+      if (filters.region && filters.region.length && 
+          !filters.region.includes(match.team1.region) && 
+          !filters.region.includes(match.team2.region)) return false;
+      
+      return true;
+    });
+  }, [searchQuery, filters]);
 
-  const getMapWinner = (map: any, team1Score: number, team2Score: number) => {
-    if (map.score1 > map.score2) return 'team1';
-    if (map.score2 > map.score1) return 'team2';
-    return 'draw';
-  };
+  const liveMatches = mockMatches.filter(m => m.status === 'live');
+  const upcomingMatches = mockMatches.filter(m => m.status === 'upcoming');
+  const completedMatches = mockMatches.filter(m => m.status === 'completed');
+  const featuredMatch = mockMatches.find(m => m.featured);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <main className="pt-16 min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black">
+      <div className="max-w-screen-2xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="text-center mb-8"
         >
-          <h1 className="text-4xl font-orbitron font-bold gradient-text mb-2">
-            Resultados dos Jogos
+          <h1 className="text-4xl md:text-5xl font-orbitron font-bold gradient-text mb-4">
+            🏆 RESULTADOS 📊
           </h1>
-          <p className="text-gray-400">
-            Todos os resultados dos jogos entre equipas registadas no CS2Hub
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+            Todos os resultados da scene ibérica. Partidas ao vivo, próximos jogos e histórico completo.
           </p>
         </motion.div>
 
-        {/* Stats Cards */}
-        <motion.div
+        {/* Live Ticker */}
+        {liveMatches.length > 0 && (
+          <motion.div 
+            className="mb-8 bg-red-500/10 border border-red-400/30 rounded-xl p-4 backdrop-blur-sm"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-red-400 font-semibold">AO VIVO</span>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <motion.div
+                  animate={{ x: [-100, 0] }}
+                  transition={{ duration: 0.5 }}
+                  className="text-white"
+                >
+                  {liveMatches.map((match, i) => (
+                    <span key={match.id} className="mr-8">
+                      {match.team1.name} vs {match.team2.name} ({match.team1.score}-{match.team2.score})
+                    </span>
+                  ))}
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Stats Dashboard */}
+        <motion.div 
+          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
         >
-          <div className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Total de Jogos</p>
-                <p className="text-3xl font-bold text-white">{mockStats.totalMatches}</p>
-              </div>
-              <Trophy className="w-12 h-12 text-yellow-400" />
-            </div>
-          </div>
+          <StatsCard
+            title="Partidas Totais"
+            value={mockStats.totalMatches}
+            icon={<Trophy className="w-5 h-5 text-yellow-400" />}
+            trend="up"
+            trendValue="+12"
+          />
+          <StatsCard
+            title="Ao Vivo"
+            value={mockStats.liveMatches}
+            icon={<Activity className="w-5 h-5 text-red-400" />}
+            gradient
+          />
+          <StatsCard
+            title="Prize Pool Total"
+            value={mockStats.totalPrizePool}
+            icon={<Award className="w-5 h-5 text-green-400" />}
+            subtitle="Esta época"
+          />
+          <StatsCard
+            title="Viewers Totais"
+            value={mockStats.totalViewers}
+            icon={<Eye className="w-5 h-5 text-purple-400" />}
+          />
 
-          <div className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Equipas Ativas</p>
-                <p className="text-3xl font-bold text-white">{mockStats.activeTeams}</p>
-              </div>
-              <Users className="w-12 h-12 text-blue-400" />
-            </div>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Vitórias PT</p>
-                <p className="text-3xl font-bold text-white">{mockStats.portugalWins}</p>
-                <p className="text-green-400 text-sm flex items-center gap-1">
-                  <TrendingUp className="w-4 h-4" />
-                  Líder
-                </p>
-              </div>
-              <Target className="w-12 h-12 text-green-400" />
-            </div>
-          </div>
-
-          <div className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Vitórias ES</p>
-                <p className="text-3xl font-bold text-white">{mockStats.spainWins}</p>
-                <p className="text-blue-400 text-sm flex items-center gap-1">
-                  <TrendingDown className="w-4 h-4" />
-                  Segunda
-                </p>
-              </div>
-              <Award className="w-12 h-12 text-blue-400" />
-            </div>
-          </div>
         </motion.div>
 
-        {/* Filters and Search */}
-        <motion.div
+        {/* Match Status Filter */}
+        <motion.div 
+          className="flex justify-center mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10 mb-8"
         >
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Procurar por equipa ou torneio..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-cyan-400"
-              />
-            </div>
-            
-            <select
-              value={selectedTournament}
-              onChange={(e) => setSelectedTournament(e.target.value)}
-              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400"
-            >
-              {tournaments.map(tournament => (
-                <option key={tournament} value={tournament}>
-                  {tournament === 'all' ? 'Todos os Torneios' : tournament}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedRegion}
-              onChange={(e) => setSelectedRegion(e.target.value)}
-              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400"
-            >
-              {regions.map(region => (
-                <option key={region} value={region}>
-                  {region === 'all' ? 'Todas as Regiões' : region}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-cyan-400"
-            >
-              <option value="date">Ordenar por Data</option>
-              <option value="tournament">Ordenar por Torneio</option>
-              <option value="score">Ordenar por Pontuação</option>
-            </select>
+          <div className="bg-white/5 p-1 rounded-xl border border-white/10">
+            {[
+              { id: 'live', label: '🔴 Ao Vivo', count: liveMatches.length },
+              { id: 'upcoming', label: '⏳ Próximas', count: upcomingMatches.length },
+              { id: 'completed', label: '✅ Terminadas', count: completedMatches.length }
+            ].map((view) => (
+              <button
+                key={view.id}
+                onClick={() => setSelectedView(view.id as any)}
+                className={`px-6 py-3 rounded-lg font-orbitron font-semibold transition-all duration-300 ${
+                  selectedView === view.id
+                    ? 'bg-cyan-500 text-black shadow-lg'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span>{view.label}</span>
+                  <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
+                    {view.count}
+                  </span>
+                </div>
+              </button>
+            ))}
           </div>
         </motion.div>
 
-        {/* Results Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Results */}
-          <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="space-y-6"
-            >
-              <h2 className="text-2xl font-bold text-white mb-4">Resultados Recentes</h2>
-              
-              {sortedResults.map((result, index) => (
-                <motion.div
-                  key={result.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * index }}
-                  className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all duration-300"
-                >
-                  {/* Match Header */}
-                  <div className="p-6 border-b border-white/10">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-white">{result.tournament}</h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-400">
-                        <Calendar className="w-4 h-4" />
-                        {result.date}
-                        <Clock className="w-4 h-4 ml-2" />
-                        {result.time}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        result.status === 'completed' 
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                          : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                      }`}>
-                        {result.status === 'completed' ? '✅ Concluído' : '⏳ Em Andamento'}
-                      </span>
-                    </div>
-                  </div>
+        {/* Search and Filters */}
+        <motion.div 
+          className="flex flex-col lg:flex-row gap-4 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <SearchBar
+            placeholder="Pesquisar equipas, torneios..."
+            onSearch={setSearchQuery}
+            className="flex-1"
+          />
+          
+          <FilterPanel
+            filters={intelligentFilters}
+            onFiltersChange={setFilters}
+          />
+        </motion.div>
 
-                  {/* Teams and Score */}
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      {/* Team 1 */}
-                      <div className="flex items-center gap-4 flex-1">
-                        <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
-                          <img src={result.team1.logo} alt={result.team1.name} className="w-10 h-10" />
-                        </div>
-                        <div>
-                          <h4 className={`text-lg font-semibold ${getWinnerClass(result, 'team1')}`}>
-                            {result.team1.name}
-                          </h4>
-                          <p className="text-sm text-gray-400">{result.team1.region}</p>
-                        </div>
-                      </div>
-
-                      {/* Score */}
-                      <div className="text-center mx-8">
-                        <div className="text-3xl font-bold text-white mb-1">
-                          {result.team1.score} - {result.team2.score}
-                        </div>
-                        <div className="text-sm text-gray-400">Pontuação Final</div>
-                      </div>
-
-                      {/* Team 2 */}
-                      <div className="flex items-center gap-4 flex-1 justify-end">
-                        <div className="text-right">
-                          <h4 className={`text-lg font-semibold ${getWinnerClass(result, 'team2')}`}>
-                            {result.team2.name}
-                          </h4>
-                          <p className="text-sm text-gray-400">{result.team2.region}</p>
-                        </div>
-                        <div className="w-16 h-16 bg-white/10 rounded-lg flex items-center justify-center">
-                          <img src={result.team2.logo} alt={result.team2.name} className="w-10 h-10" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Expand/Collapse Button */}
-                    <button
-                      onClick={() => setExpandedMatch(expandedMatch === result.id ? null : result.id)}
-                      className="w-full flex items-center justify-center gap-2 py-2 text-cyan-400 hover:text-cyan-300 transition-colors"
-                    >
-                      {expandedMatch === result.id ? (
-                        <>
-                          <ChevronUp className="w-4 h-4" />
-                          Ocultar Detalhes
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="w-4 h-4" />
-                          Ver Detalhes
-                        </>
-                      )}
-                    </button>
-
-                    {/* Expanded Details */}
-                    {expandedMatch === result.id && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-4 pt-4 border-t border-white/10"
-                      >
-                        {/* Maps */}
-                        <div className="mb-4">
-                          <h5 className="text-sm font-semibold text-white mb-2">Mapas Jogados</h5>
-                          <div className="space-y-2">
-                            {result.maps.map((map, mapIndex) => (
-                              <div key={mapIndex} className="flex items-center justify-between p-2 bg-white/5 rounded">
-                                <span className="text-sm text-gray-400">{map.name}</span>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-sm font-medium ${
-                                    getMapWinner(map, map.score1, map.score2) === 'team1' ? 'text-green-400' : 'text-gray-400'
-                                  }`}>
-                                    {map.score1}
-                                  </span>
-                                  <span className="text-sm text-gray-500">-</span>
-                                  <span className={`text-sm font-medium ${
-                                    getMapWinner(map, map.score1, map.score2) === 'team2' ? 'text-green-400' : 'text-gray-400'
-                                  }`}>
-                                    {map.score2}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Highlights */}
-                        <div>
-                          <h5 className="text-sm font-semibold text-white mb-2">Destaques</h5>
-                          <div className="space-y-1">
-                            {result.highlights.map((highlight, highlightIndex) => (
-                              <div key={highlightIndex} className="flex items-center gap-2 text-sm text-gray-400">
-                                <Zap className="w-3 h-3 text-yellow-400" />
-                                {highlight}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Top Teams */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+        {/* Main Content */}
+        <>
+          {/* Featured Match for Live/Upcoming */}
+          {(selectedView === 'live' || selectedView === 'upcoming') && featuredMatch && (
+            <motion.div 
+              className="mb-12"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10"
             >
-              <h3 className="text-xl font-semibold text-white mb-4">Top Equipas</h3>
-              <div className="space-y-3">
-                {mockTopTeams.map((team, index) => (
-                  <div key={team.name} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center text-sm font-bold text-black">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">{team.name}</p>
-                        <p className="text-xs text-gray-400">{team.region}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-white">{team.wins}W - {team.losses}L</p>
-                      <p className="text-xs text-green-400">{team.winRate}%</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <h2 className="text-2xl font-orbitron font-bold text-white mb-6 flex items-center gap-2">
+                <Star className="w-6 h-6 text-yellow-400" />
+                {selectedView === 'live' ? 'Partida em Destaque' : 'Próxima Grande Partida'}
+              </h2>
+              <FeaturedMatchCard match={featuredMatch} />
             </motion.div>
+          )}
 
-            {/* Quick Stats */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
-              className="bg-white/5 backdrop-blur-xl rounded-xl p-6 border border-white/10"
-            >
-              <h3 className="text-xl font-semibold text-white mb-4">Estatísticas Rápidas</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Média de Pontuação</span>
-                  <span className="text-white font-semibold">{mockStats.averageScore}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Mapa Mais Jogado</span>
-                  <span className="text-white font-semibold">{mockStats.mostPlayedMap}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Total de Jogadores</span>
-                  <span className="text-white font-semibold">{mockStats.totalPlayers}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Torneios Ativos</span>
-                  <span className="text-white font-semibold">{mockStats.totalTournaments}</span>
+          {/* Matches List */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+          >
+            <h2 className="text-2xl font-orbitron font-bold text-white mb-6 flex items-center gap-2">
+              {selectedView === 'live' && (
+                <>
+                  <Activity className="w-6 h-6 text-red-400" />
+                  Partidas Ao Vivo ({liveMatches.length})
+                </>
+              )}
+              {selectedView === 'upcoming' && (
+                <>
+                  <Clock className="w-6 h-6 text-yellow-400" />
+                  Próximas Partidas ({upcomingMatches.length})
+                </>
+              )}
+              {selectedView === 'completed' && (
+                <>
+                  <Trophy className="w-6 h-6 text-green-400" />
+                  Partidas Terminadas ({completedMatches.length})
+                </>
+              )}
+            </h2>
+            
+            <div className="space-y-4">
+              {selectedView === 'live' && liveMatches.map((match, index) => (
+                <MatchCard 
+                  key={match.id} 
+                  match={match} 
+                  index={index}
+                  expanded={expandedMatch === match.id}
+                  onToggle={() => setExpandedMatch(expandedMatch === match.id ? null : match.id)}
+                />
+              ))}
+              {selectedView === 'upcoming' && upcomingMatches.map((match, index) => (
+                <MatchCard 
+                  key={match.id} 
+                  match={match} 
+                  index={index}
+                  expanded={expandedMatch === match.id}
+                  onToggle={() => setExpandedMatch(expandedMatch === match.id ? null : match.id)}
+                />
+              ))}
+              {selectedView === 'completed' && completedMatches.map((match, index) => (
+                <MatchCard 
+                  key={match.id} 
+                  match={match} 
+                  index={index}
+                  expanded={expandedMatch === match.id}
+                  onToggle={() => setExpandedMatch(expandedMatch === match.id ? null : match.id)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        </>
+      </div>
+    </main>
+  );
+}
+
+// Featured Match Card Component
+function FeaturedMatchCard({ match }: { match: typeof mockMatches[0] }) {
+  return (
+    <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-red-500/10 rounded-2xl border border-yellow-400/30 p-8 backdrop-blur-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Match Info */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-sm font-bold">
+              {match.phase}
+            </div>
+            <span className="text-gray-400">{match.tournament}</span>
+          </div>
+          
+          <div className="flex items-center justify-between mb-6">
+            {/* Team 1 */}
+            <div className="text-center">
+              <img src={match.team1.logo} alt={match.team1.name} className="w-16 h-16 mx-auto mb-2" />
+              <h3 className="text-xl font-bold text-white">{match.team1.name}</h3>
+              <p className="text-sm text-gray-400">#{match.team1.rank} • {match.team1.rating}</p>
+            </div>
+            
+            {/* Score */}
+            <div className="text-center">
+              <div className="text-4xl font-bold text-white mb-2">
+                {match.team1.score} - {match.team2.score}
+              </div>
+              <div className="text-sm text-gray-400">
+                {match.date} • {match.time}
+              </div>
+            </div>
+            
+            {/* Team 2 */}
+            <div className="text-center">
+              <img src={match.team2.logo} alt={match.team2.name} className="w-16 h-16 mx-auto mb-2" />
+              <h3 className="text-xl font-bold text-white">{match.team2.name}</h3>
+              <p className="text-sm text-gray-400">#{match.team2.rank} • {match.team2.rating}</p>
+            </div>
+          </div>
+          
+          {/* Maps */}
+          <div className="space-y-2">
+            {match.maps.map((map, i) => (
+              <div key={i} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                <span className="text-white font-medium">{map.name}</span>
+                <div className="flex items-center gap-4">
+                  <span className={`${map.team1Score > map.team2Score ? 'text-green-400' : 'text-gray-400'}`}>
+                    {map.team1Score}
+                  </span>
+                  <span className="text-gray-500">-</span>
+                  <span className={`${map.team2Score > map.team1Score ? 'text-green-400' : 'text-gray-400'}`}>
+                    {map.team2Score}
+                  </span>
+                  <span className="text-xs text-gray-400">{map.duration}</span>
                 </div>
               </div>
-            </motion.div>
+            ))}
+          </div>
+        </div>
+        
+        {/* MVP & Stats */}
+        <div className="space-y-6">
+          <div className="bg-purple-500/20 border border-purple-400/30 rounded-xl p-4">
+            <h4 className="text-purple-400 font-semibold mb-3 flex items-center gap-2">
+              <Crown className="w-4 h-4" />
+              MVP
+            </h4>
+            <p className="text-white font-bold text-lg">{match.mvp.name}</p>
+            <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
+              <div>K/D: {match.mvp.kills}/{match.mvp.deaths}</div>
+              <div>ADR: {match.mvp.adr}</div>
+              <div>Rating: {match.mvp.rating}</div>
+              <div>Viewers: {match.viewers.toLocaleString()}</div>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <h4 className="text-white font-semibold">Highlights</h4>
+            {match.highlights.map((highlight, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm">
+                <Flame className="w-3 h-3 text-orange-400 mt-1 flex-shrink-0" />
+                <span className="text-gray-300">{highlight}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+// Match Card Component
+function MatchCard({ match, index, expanded, onToggle }: { 
+  match: typeof mockMatches[0]; 
+  index: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const isWinner = (team: 'team1' | 'team2') => {
+    return match[team].score > match[team === 'team1' ? 'team2' : 'team1'].score;
+  };
+
+  return (
+    <motion.div
+      className={`bg-white/5 rounded-xl border backdrop-blur-sm transition-all duration-300 ${
+        match.live 
+          ? 'border-red-400/50 bg-red-500/5' 
+          : 'border-white/10 hover:border-cyan-400/30'
+      }`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+    >
+      <div className="p-6 cursor-pointer" onClick={onToggle}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-400">
+              {match.date} • {match.time}
+            </div>
+            {match.live && (
+              <div className="flex items-center gap-2 text-red-400">
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                <span className="text-sm font-semibold">AO VIVO</span>
+              </div>
+            )}
+          </div>
+          
+          <ChevronRight className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? 'rotate-90' : ''}`} />
+        </div>
+        
+        <div className="flex items-center justify-between mt-4">
+          {/* Team 1 */}
+          <div className="flex items-center gap-3">
+            <img src={match.team1.logo} alt={match.team1.name} className="w-10 h-10" />
+            <div>
+              <h3 className={`font-semibold ${isWinner('team1') ? 'text-green-400' : 'text-white'}`}>
+                {match.team1.name}
+              </h3>
+              <p className="text-xs text-gray-400">#{match.team1.rank}</p>
+            </div>
+          </div>
+          
+          {/* Score */}
+          <div className="text-center">
+            <div className="text-2xl font-bold text-white">
+              {match.team1.score} - {match.team2.score}
+            </div>
+            <div className="text-xs text-gray-400">{match.tournament}</div>
+          </div>
+          
+          {/* Team 2 */}
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <h3 className={`font-semibold ${isWinner('team2') ? 'text-green-400' : 'text-white'}`}>
+                {match.team2.name}
+              </h3>
+              <p className="text-xs text-gray-400">#{match.team2.rank}</p>
+            </div>
+            <img src={match.team2.logo} alt={match.team2.name} className="w-10 h-10" />
+          </div>
+        </div>
+      </div>
+      
+      {/* Expanded Content */}
+      {expanded && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="border-t border-white/10 p-6 bg-white/3"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Maps */}
+            <div>
+              <h4 className="text-white font-semibold mb-3">Mapas</h4>
+              <div className="space-y-2">
+                {match.maps.map((map, i) => (
+                  <div key={i} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                    <span className="text-white">{map.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={map.team1Score > map.team2Score ? 'text-green-400' : 'text-gray-400'}>
+                        {map.team1Score}
+                      </span>
+                      <span className="text-gray-500">-</span>
+                      <span className={map.team2Score > map.team1Score ? 'text-green-400' : 'text-gray-400'}>
+                        {map.team2Score}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* MVP & Highlights */}
+            <div>
+              <h4 className="text-white font-semibold mb-3">MVP & Highlights</h4>
+              <div className="bg-purple-500/20 rounded-lg p-3 mb-3">
+                <p className="text-purple-400 font-semibold">{match.mvp.name}</p>
+                <p className="text-sm text-gray-300">Rating: {match.mvp.rating}</p>
+              </div>
+              <div className="space-y-1">
+                {match.highlights.slice(0, 2).map((highlight, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    <Star className="w-3 h-3 text-yellow-400 mt-1 flex-shrink-0" />
+                    <span className="text-gray-300">{highlight}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+}
+
+
 
 export default ResultsPage; 

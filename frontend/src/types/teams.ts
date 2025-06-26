@@ -34,4 +34,11 @@ export interface Team {
   substitutes: TeamMember[];
   staff: StaffMember[];
   competitions?: string[];
+  // Network posts system
+  hasActivePost?: boolean;
+  postDate?: string;
+  postContent?: string;
+  lookingForRoles?: string[];
+  requirements?: string;
+  lastActiveDate?: string;
 } 

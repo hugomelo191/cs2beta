@@ -1,344 +1,898 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FaMicrophone, FaVideo, FaUsers, FaStar, FaGlobe, FaTwitch, FaYoutube, FaDiscord } from 'react-icons/fa';
-import { castersData, streamersData } from '@/lib/constants/mock-data';
+import { Search, Filter, Users, Radio, Globe, Star, Play, Eye, Heart, MessageCircle, ExternalLink, TrendingUp, Clock, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { StatsCard } from '@/components/ui/StatsCard';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { FilterPanel, FilterGroup } from '@/components/ui/FilterPanel';
+import { FavoriteButton } from '@/components/ui/FavoriteButton';
+import { QuickActions, createQuickActions } from '@/components/ui/QuickActions';
 
-interface Caster {
-  id: string;
-  name: string;
-  type: 'caster' | 'streamer';
-  specialty: string;
-  followers: number;
-  rating: number;
-  languages: string[];
-  description: string;
-  avatar: string;
-  socials: {
-    twitch?: string;
-    youtube?: string;
-    discord?: string;
-    twitter?: string;
-  };
-  isLive: boolean;
-  currentGame?: string;
-  experience: string;
-  achievements: string[];
-  country: 'pt' | 'es';
-}
+// Country mapping for intelligent filters
+const COUNTRIES = {
+  'PT': { flag: '🇵🇹', name: 'Portugal' },
+  'ES': { flag: '🇪🇸', name: 'Espanha' },
+  'FR': { flag: '🇫🇷', name: 'França' },
+  'IT': { flag: '🇮🇹', name: 'Itália' },
+  'DE': { flag: '🇩🇪', name: 'Alemanha' },
+  'UK': { flag: '🇬🇧', name: 'Reino Unido' },
+  'NL': { flag: '🇳🇱', name: 'Holanda' }
+} as const;
 
-function CastersPage() {
-  const [activeTab, setActiveTab] = useState<'casters' | 'streamers'>('casters');
-  const [filterLanguage, setFilterLanguage] = useState<'all' | 'pt' | 'es'>('all');
-
-  const filteredCasters = castersData.filter(caster => {
-    if (filterLanguage === 'all') return true;
-    return caster.languages.includes(filterLanguage);
-  });
-
-  const filteredStreamers = streamersData.filter(streamer => {
-    if (filterLanguage === 'all') return true;
-    return streamer.languages.includes(filterLanguage);
-  });
-
-  const currentList = activeTab === 'casters' ? filteredCasters : filteredStreamers;
-
-  const getLanguageFlag = (lang: string) => {
-    switch (lang) {
-      case 'pt': return '🇵🇹';
-      case 'es': return '🇪🇸';
-      default: return '🌍';
+// Enhanced mock data for casters with more countries
+const mockCasters = [
+  {
+    id: 1,
+    name: 'GameMaster_PT',
+    type: 'caster',
+    avatar: '/featured/nuno-costa.png',
+    country: 'PT',
+    specialty: 'Torneios Competitivos',
+    followers: 15420,
+    rating: 4.8,
+    languages: ['Português', 'Inglês'],
+    description: 'Caster oficial da Liga Portuguesa de CS2. Especialista em análise táctica e momentos épicos.',
+    isLive: true,
+    currentGame: 'CS2 - Liga Pro Portugal',
+    currentViewers: 1247,
+    experience: '5+ anos',
+    achievements: ['Caster Oficial ESL', 'Blast Premier', '+100 Torneios'],
+    socials: {
+      twitch: 'gamemaster_pt',
+      youtube: 'GameMasterPortugal',
+      twitter: '@gamemaster_pt',
+      discord: 'GameMaster#1234'
+    },
+    upcomingEvents: [
+      { name: 'Liga Pro Final', date: '2024-03-15', type: 'Torneio' },
+      { name: 'Iberian Cup', date: '2024-03-20', type: 'Internacional' }
+    ],
+    recentHighlights: ['Final épica Liga Pro', 'Clutch 1v4 histórico', 'Overtime thriller'],
+    schedule: {
+      monday: '20:00-23:00',
+      wednesday: '20:00-23:00',
+      weekend: '15:00-20:00'
     }
+  },
+  {
+    id: 2,
+    name: 'IberianVoice',
+    type: 'caster',
+    avatar: '/featured/streamer1.jpg',
+    country: 'ES',
+    specialty: 'Scene Internacional',
+    followers: 23100,
+    rating: 4.9,
+    languages: ['Español', 'Inglês'],
+    description: 'Voz oficial dos torneios ibéricos. Conhecido pela paixão e conhecimento enciclopédico.',
+    isLive: false,
+    currentGame: null,
+    currentViewers: 0,
+    lastStream: '2 horas atrás',
+    experience: '7+ anos',
+    achievements: ['Major Caster', 'IEM Cologne', 'Worlds Finalist'],
+    socials: {
+      twitch: 'iberianvoice',
+      youtube: 'IberianCasting',
+      twitter: '@iberianvoice'
+    },
+    upcomingEvents: [
+      { name: 'Madrid Masters', date: '2024-03-18', type: 'Nacional' }
+    ],
+    recentHighlights: ['Major Grand Final', 'Legendary comeback', 'Perfect game call'],
+    schedule: {
+      tuesday: '19:00-22:00',
+      thursday: '19:00-22:00',
+      weekend: '14:00-19:00'
+    }
+  },
+  {
+    id: 3,
+    name: 'CS2_Streamer_Pro',
+    type: 'streamer',
+    avatar: '/featured/player1.jpg',
+    country: 'PT',
+    specialty: 'Gameplay & Análise',
+    followers: 8750,
+    rating: 4.6,
+    languages: ['Português'],
+    description: 'Ex-jogador profissional. Streams educativos focados em melhorar o gameplay da comunidade.',
+    isLive: true,
+    currentGame: 'CS2 - Faceit Level 10',
+    currentViewers: 523,
+    experience: '3+ anos streaming',
+    achievements: ['Ex-Pro Player', 'Faceit Level 10', 'Educational Creator'],
+    socials: {
+      twitch: 'cs2streamerpro',
+      youtube: 'CS2ProTips'
+    },
+    upcomingEvents: [],
+    recentHighlights: ['Ace clutch', 'Educational series', 'Community challenges'],
+    schedule: {
+      daily: '21:00-01:00'
+    }
+  },
+  {
+    id: 4,
+    name: 'TacticMaster',
+    type: 'caster',
+    avatar: '/featured/player1.jpg',
+    country: 'ES',
+    specialty: 'Análise Táctica',
+    followers: 12300,
+    rating: 4.7,
+    languages: ['Español', 'Português'],
+    description: 'Especialista em análise táctica e breakdowns estratégicos. Coach e analista profissional.',
+    isLive: false,
+    currentGame: null,
+    currentViewers: 0,
+    lastStream: '1 dia atrás',
+    experience: '4+ anos',
+    achievements: ['Team Coach', 'Tactical Analyst', 'Strategy Expert'],
+    socials: {
+      twitch: 'tacticmaster',
+      youtube: 'TacticalBreakdowns'
+    },
+    upcomingEvents: [
+      { name: 'Tactical Workshop', date: '2024-03-16', type: 'Educational' }
+    ],
+    recentHighlights: ['Perfect anti-eco read', 'Tactical masterclass', 'Strategy breakdown'],
+    schedule: {
+      weekend: '16:00-20:00'
+    }
+  },
+  // Adding French caster for demonstration
+  {
+    id: 5,
+    name: 'FrenchCS_Master',
+    type: 'caster',
+    avatar: '/featured/player1.jpg',
+    country: 'FR',
+    specialty: 'Majors & Internationals',
+    followers: 31500,
+    rating: 4.9,
+    languages: ['Français', 'Inglês'],
+    description: 'Caster oficial francês com experiência em Majors. Voz icónica da scene francesa de CS2.',
+    isLive: true,
+    currentGame: 'CS2 - French Championship',
+    currentViewers: 2847,
+    experience: '8+ anos',
+    achievements: ['Major Caster', 'ESL Pro League', 'French Legend'],
+    socials: {
+      twitch: 'frenchcs_master',
+      youtube: 'FrenchCSMaster'
+    },
+    upcomingEvents: [
+      { name: 'Major Paris', date: '2024-03-25', type: 'Major' }
+    ],
+    recentHighlights: ['Major Final Call', 'Historic French Win', 'Legendary Casting'],
+    schedule: {
+      daily: '19:00-23:00'
+    }
+  },
+  // Adding German streamer
+  {
+    id: 6,
+    name: 'GermanGaming_Pro',
+    type: 'streamer',
+    avatar: '/featured/player1.jpg',
+    country: 'DE',
+    specialty: 'Educational Content',
+    followers: 18200,
+    rating: 4.8,
+    languages: ['Deutsch', 'Inglês'],
+    description: 'Top German streamer focado em educação e gameplay de alto nível. Ex-jogador da Bundesliga CS.',
+    isLive: false,
+    currentGame: null,
+    currentViewers: 0,
+    lastStream: '4 horas atrás',
+    experience: '6+ anos',
+    achievements: ['German Champion', 'Educational Award', 'Top Streamer DE'],
+    socials: {
+      twitch: 'germangaming_pro',
+      youtube: 'GermanCSEducation'
+    },
+    upcomingEvents: [],
+    recentHighlights: ['Perfect tutorial series', 'German league highlights', 'Educational masterclass'],
+    schedule: {
+      weekdays: '18:00-22:00'
+    }
+  }
+];
+
+export function CastersPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [viewMode, setViewMode] = useState<'grid' | 'featured'>('featured');
+
+  // Intelligent filter generation based on available data
+  const intelligentFilters = useMemo((): FilterGroup[] => {
+    // Get unique countries from casters
+    const availableCountries = Array.from(new Set(mockCasters.map(c => c.country)));
+    
+    // Get unique languages
+    const allLanguages = mockCasters.flatMap(c => c.languages);
+    const availableLanguages = Array.from(new Set(allLanguages));
+    
+    // Count items for each filter option
+    const countByType = {
+      caster: mockCasters.filter(c => c.type === 'caster').length,
+      streamer: mockCasters.filter(c => c.type === 'streamer').length
+    };
+    
+    const countByCountry = availableCountries.reduce((acc, country) => {
+      acc[country] = mockCasters.filter(c => c.country === country).length;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const countByStatus = {
+      live: mockCasters.filter(c => c.isLive).length,
+      offline: mockCasters.filter(c => !c.isLive).length
+    };
+
+    return [
+      {
+        id: 'type',
+        label: 'Tipo',
+        type: 'select',
+        options: [
+          { id: 'all', label: 'Todos', value: '' },
+          { id: 'caster', label: `🎙️ Casters (${countByType.caster})`, value: 'caster' },
+          { id: 'streamer', label: `📺 Streamers (${countByType.streamer})`, value: 'streamer' }
+        ]
+      },
+      {
+        id: 'country',
+        label: 'País',
+        type: 'multiselect',
+        options: availableCountries.map(country => ({
+          id: country.toLowerCase(),
+          label: `${COUNTRIES[country as keyof typeof COUNTRIES]?.flag || '🌍'} ${COUNTRIES[country as keyof typeof COUNTRIES]?.name || country} (${countByCountry[country]})`,
+          value: country
+        }))
+      },
+      {
+        id: 'language',
+        label: 'Idioma',
+        type: 'multiselect',
+        options: availableLanguages.map(lang => {
+          const count = mockCasters.filter(c => c.languages.includes(lang)).length;
+          const flag = lang === 'Português' ? '🇵🇹' : 
+                      lang === 'Español' ? '🇪🇸' : 
+                      lang === 'Français' ? '🇫🇷' :
+                      lang === 'Deutsch' ? '🇩🇪' :
+                      lang === 'Inglês' ? '🇬🇧' : '🌍';
+          return {
+            id: lang.toLowerCase(),
+            label: `${flag} ${lang} (${count})`,
+            value: lang
+          };
+        })
+      },
+      {
+        id: 'status',
+        label: 'Estado',
+        type: 'select',
+        options: [
+          { id: 'all', label: 'Todos', value: '' },
+          { id: 'live', label: `🔴 Ao Vivo (${countByStatus.live})`, value: 'live' },
+          { id: 'offline', label: `⚫ Offline (${countByStatus.offline})`, value: 'offline' }
+        ]
+      },
+      {
+        id: 'followers',
+        label: 'Seguidores Mínimos',
+        type: 'range',
+        min: 0,
+        max: Math.max(...mockCasters.map(c => c.followers))
+      }
+    ];
+  }, []);
+
+  // Filter casters with intelligent logic
+  const filteredCasters = useMemo(() => {
+    return mockCasters.filter(caster => {
+      if (searchQuery && !caster.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          !caster.specialty.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      if (filters.type && caster.type !== filters.type) return false;
+      if (filters.country && filters.country.length && !filters.country.includes(caster.country)) return false;
+      if (filters.language && filters.language.length && !filters.language.some((lang: string) => caster.languages.includes(lang))) return false;
+      if (filters.status === 'live' && !caster.isLive) return false;
+      if (filters.status === 'offline' && caster.isLive) return false;
+      if (filters.followers && caster.followers < filters.followers) return false;
+      
+      return true;
+    });
+  }, [searchQuery, filters]);
+
+  // Smart suggestions based on current filters
+  const smartSuggestions = useMemo(() => {
+    const suggestions = [];
+    
+    if (filters.country && filters.country.includes('FR') && !filters.language?.includes('Français')) {
+      suggestions.push('💡 Também podes filtrar por idioma Francês');
+    }
+    
+    if (filters.type === 'caster' && !filters.status) {
+      const liveCasters = filteredCasters.filter(c => c.isLive).length;
+      if (liveCasters > 0) {
+        suggestions.push(`🔴 ${liveCasters} caster${liveCasters > 1 ? 's' : ''} ao vivo agora`);
+      }
+    }
+    
+    if (filteredCasters.length === 0 && Object.keys(filters).length > 0) {
+      suggestions.push('🔍 Tenta remover alguns filtros para ver mais resultados');
+    }
+    
+    return suggestions;
+  }, [filters, filteredCasters]);
+
+  // Stats with intelligent calculations
+  const stats = {
+    total: mockCasters.length,
+    live: mockCasters.filter(c => c.isLive).length,
+    countries: Array.from(new Set(mockCasters.map(c => c.country))).length,
+    totalViewers: mockCasters.filter(c => c.isLive).reduce((sum, c) => sum + (c.currentViewers || 0), 0)
   };
 
-  const getCountryName = (country: 'pt' | 'es') => {
-    return country === 'pt' ? 'Portugal' : 'Espanha';
-  }
+  const featuredCaster = filteredCasters.find(c => c.isLive && c.followers > 20000) || filteredCasters[0];
+  const liveCasters = filteredCasters.filter(c => c.isLive);
+  const offlineCasters = filteredCasters.filter(c => !c.isLive);
+
+  // Group by country for better organization
+  const castersByCountry = useMemo(() => {
+    const grouped = filteredCasters.reduce((acc, caster) => {
+      if (!acc[caster.country]) {
+        acc[caster.country] = [];
+      }
+      acc[caster.country].push(caster);
+      return acc;
+    }, {} as Record<string, typeof mockCasters>);
+    
+    return Object.entries(grouped).sort(([a], [b]) => {
+      // Prioritize PT and ES first, then alphabetical
+      if (a === 'PT') return -1;
+      if (b === 'PT') return 1;
+      if (a === 'ES') return -1;
+      if (b === 'ES') return 1;
+      return a.localeCompare(b);
+    });
+  }, [filteredCasters]);
 
   return (
-    <>
-      <div className="min-h-screen bg-[#0a0a0a] relative overflow-hidden pt-20">
-        {/* Animated background & patterns */}
-        <div className="absolute inset-0 z-0 opacity-30">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        </div>
+    <main className="pt-16 min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black">
+      <div className="max-w-screen-2xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl md:text-5xl font-orbitron font-bold gradient-text mb-4">
+            🎙️ CASTERS & STREAMERS 📺
+          </h1>
+          <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+            Descobre a voz da scene mundial! Casters profissionais e streamers de toda a Europa conectados numa só plataforma.
+          </p>
+        </motion.div>
 
-        {/* Content */}
-        <div className="relative z-10 p-8 max-w-7xl mx-auto text-white">
-          {/* Header */}
+        {/* Stats Dashboard */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <StatsCard
+            title="Total Creators"
+            value={stats.total}
+            icon={<Users className="w-5 h-5 text-cyan-400" />}
+            gradient
+          />
+          <StatsCard
+            title="Ao Vivo Agora"
+            value={stats.live}
+            icon={<Radio className="w-5 h-5 text-red-400" />}
+            trend="up"
+            trendValue="+2"
+            subtitle="Streams ativas"
+          />
+          <StatsCard
+            title="Países"
+            value={stats.countries}
+            icon={<Globe className="w-5 h-5 text-blue-400" />}
+            subtitle="Representados"
+          />
+          <StatsCard
+            title="Viewers Totais"
+            value={stats.totalViewers}
+            icon={<Eye className="w-5 h-5 text-purple-400" />}
+            subtitle="Assistindo agora"
+          />
+        </motion.div>
+
+        {/* View Mode Toggle */}
+        <motion.div 
+          className="flex justify-center mb-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="bg-white/5 p-1 rounded-xl border border-white/10">
+            <button
+              onClick={() => setViewMode('featured')}
+              className={`px-6 py-3 rounded-lg font-orbitron font-semibold transition-all duration-300 ${
+                viewMode === 'featured'
+                  ? 'bg-cyan-500 text-black shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Star className="inline-block mr-2 w-5 h-5" />
+              Featured
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-6 py-3 rounded-lg font-orbitron font-semibold transition-all duration-300 ${
+                viewMode === 'grid'
+                  ? 'bg-cyan-500 text-black shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              <Globe className="inline-block mr-2 w-5 h-5" />
+              Por País
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Search and Intelligent Filters */}
+        <motion.div 
+          className="flex flex-col lg:flex-row gap-4 mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <SearchBar
+            placeholder="Pesquisar casters e streamers..."
+            onSearch={setSearchQuery}
+            className="flex-1"
+          />
+          
+          <FilterPanel
+            filters={intelligentFilters}
+            onFiltersChange={setFilters}
+          />
+        </motion.div>
+
+        {/* Smart Suggestions */}
+        {smartSuggestions.length > 0 && (
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            className="mb-8"
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center space-y-6 mb-12"
+            transition={{ delay: 0.5 }}
           >
-            <h1 className="text-6xl font-black text-white">
-              Casters & <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Streamers</span>
-            </h1>
-            <p className="text-xl text-zinc-300 max-w-3xl mx-auto">
-              Descobre os melhores casters e streamers da península ibérica. 
-              Acompanha transmissões ao vivo e conteúdo exclusivo de CS2.
-            </p>
+            <div className="bg-amber-500/10 border border-amber-400/30 rounded-lg p-4">
+              <h4 className="text-amber-400 font-semibold mb-2 flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Sugestões Inteligentes
+              </h4>
+              <div className="space-y-1">
+                {smartSuggestions.map((suggestion, i) => (
+                  <p key={i} className="text-amber-300 text-sm">{suggestion}</p>
+                ))}
+              </div>
+            </div>
           </motion.div>
+        )}
 
-          {/* Stats Cards */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12"
-          >
-            <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-600/10 rounded-2xl p-6 text-center border border-cyan-500/20 backdrop-blur-xl">
-              <div className="text-3xl font-black text-cyan-400 mb-2">{castersData.length + streamersData.length}</div>
-              <div className="text-sm text-zinc-400 font-semibold uppercase tracking-wider">Total</div>
-            </div>
-            <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 rounded-2xl p-6 text-center border border-purple-500/20 backdrop-blur-xl">
-              <div className="text-3xl font-black text-purple-400 mb-2">{(castersData.reduce((acc, c) => acc + c.followers, 0) + streamersData.reduce((acc, s) => acc + s.followers, 0)).toLocaleString()}</div>
-              <div className="text-sm text-zinc-400 font-semibold uppercase tracking-wider">Seguidores</div>
-            </div>
-            <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 rounded-2xl p-6 text-center border border-green-500/20 backdrop-blur-xl">
-              <div className="text-3xl font-black text-green-400 mb-2">{castersData.filter(c => c.isLive).length + streamersData.filter(s => s.isLive).length}</div>
-              <div className="text-sm text-zinc-400 font-semibold uppercase tracking-wider">Ao Vivo</div>
-            </div>
-            <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 rounded-2xl p-6 text-center border border-orange-500/20 backdrop-blur-xl">
-              <div className="text-3xl font-black text-orange-400 mb-2">4.7</div>
-              <div className="text-sm text-zinc-400 font-semibold uppercase tracking-wider">Rating Médio</div>
-            </div>
-          </motion.div>
+        {/* Results Counter */}
+        <motion.div 
+          className="mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <p className="text-gray-400">
+            {filteredCasters.length} creator{filteredCasters.length !== 1 ? 's' : ''} encontrado{filteredCasters.length !== 1 ? 's' : ''}
+            {searchQuery && ` para "${searchQuery}"`}
+            {Object.keys(filters).length > 0 && ` com filtros aplicados`}
+          </p>
+        </motion.div>
 
-          {/* Tabs */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex justify-center mb-8"
-          >
-            <div className="flex space-x-2 bg-white/5 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
-              <button
-                onClick={() => setActiveTab('casters')}
-                className={`px-8 py-4 rounded-xl text-sm font-bold transition-all duration-300 ${
-                  activeTab === 'casters'
-                    ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-2xl shadow-cyan-500/25'
-                    : 'text-zinc-300 hover:text-white hover:bg-white/10'
-                }`}
+        {/* Featured Mode */}
+        {viewMode === 'featured' && (
+          <>
+            {/* Main Featured Caster */}
+            {featuredCaster && (
+              <motion.div 
+                className="mb-12"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
               >
-                🎤 Casters
-              </button>
-              <button
-                onClick={() => setActiveTab('streamers')}
-                className={`px-8 py-4 rounded-xl text-sm font-bold transition-all duration-300 ${
-                  activeTab === 'streamers'
-                    ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-2xl shadow-cyan-500/25'
-                    : 'text-zinc-300 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                📺 Streamers
-              </button>
-            </div>
-          </motion.div>
+                <h2 className="text-2xl font-orbitron font-bold text-white mb-6 flex items-center gap-2">
+                  <Star className="w-6 h-6 text-yellow-400" />
+                  Em Destaque
+                </h2>
+                <FeaturedCasterCard caster={featuredCaster} />
+              </motion.div>
+            )}
 
-          {/* Language Filter */}
-          <motion.div 
+            {/* Live Casters */}
+            {liveCasters.length > 0 && (
+              <motion.div 
+                className="mb-12"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+              >
+                <h2 className="text-2xl font-orbitron font-bold text-white mb-6 flex items-center gap-2">
+                  <Radio className="w-6 h-6 text-red-400" />
+                  Ao Vivo Agora ({liveCasters.length})
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {liveCasters.map((caster, index) => (
+                    <CasterCard key={caster.id} caster={caster} index={index} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Offline Casters */}
+            {offlineCasters.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+              >
+                <h2 className="text-2xl font-orbitron font-bold text-white mb-6 flex items-center gap-2">
+                  <Users className="w-6 h-6 text-gray-400" />
+                  Outros Casters
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {offlineCasters.map((caster, index) => (
+                    <CasterCard key={caster.id} caster={caster} index={index} />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        {/* Grid Mode - Organized by Country */}
+        {viewMode === 'grid' && (
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="flex justify-center mb-8"
           >
-            <div className="flex space-x-2 bg-white/5 backdrop-blur-xl p-2 rounded-2xl border border-white/10">
-              {[
-                { value: 'all', label: 'Todos', flag: '🌍' },
-                { value: 'pt', label: 'Português', flag: '🇵🇹' },
-                { value: 'es', label: 'Espanhol', flag: '🇪🇸' },
-              ].map((filter) => (
-                <button
-                  key={filter.value}
-                  onClick={() => setFilterLanguage(filter.value as any)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
-                    filterLanguage === filter.value
-                      ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-xl'
-                      : 'text-zinc-300 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  <span className="mr-2">{filter.flag}</span>
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Casters/Streamers Grid */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-8"
-          >
-            {currentList.map((caster, idx) => (
+            {castersByCountry.map(([country, casters], countryIndex) => (
               <motion.div
-                key={caster.id}
+                key={country}
+                className="mb-12"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1 }}
-                className="group relative overflow-hidden bg-gradient-to-br from-white/5 via-white/3 to-black/20 hover:from-white/10 hover:via-white/5 hover:to-black/30 transition-all duration-700 rounded-3xl shadow-2xl border border-white/10 hover:border-cyan-400/30 hover:shadow-2xl hover:shadow-cyan-500/20 backdrop-blur-xl p-6"
+                transition={{ delay: 0.6 + countryIndex * 0.1 }}
               >
-                {/* Live Badge */}
-                {caster.isLive && (
-                  <div className="absolute top-4 right-4 bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg z-10 flex items-center space-x-1">
-                    <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                    <span>AO VIVO</span>
-                  </div>
-                )}
-
-                {/* Country Badge */}
-                <div className="absolute top-4 left-4 bg-white/10 backdrop-blur-xl text-white text-xs px-3 py-1 rounded-full font-bold border border-white/20">
-                  {getLanguageFlag(caster.country)} {getCountryName(caster.country)}
-                </div>
-
-                <div className="relative space-y-6">
-                  {/* Header */}
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      <div className="w-20 h-20 bg-gradient-to-br from-cyan-500/20 via-purple-500/20 to-pink-500/20 rounded-2xl p-4 flex items-center justify-center backdrop-blur-xl border border-white/20 shadow-2xl">
-                        <img src={caster.avatar} alt={caster.name} className="w-12 h-12 object-cover rounded-xl" />
-                      </div>
-                      <div className="absolute -inset-1 bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 rounded-2xl blur opacity-30"></div>
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-black text-white group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-cyan-400 group-hover:via-purple-400 group-hover:to-pink-400 group-hover:bg-clip-text transition-all duration-500">
-                        {caster.name}
-                      </h2>
-                      <div className="flex items-center space-x-3 mt-1">
-                        <span className="text-cyan-400 font-semibold">{caster.specialty}</span>
-                        <div className="flex items-center space-x-1">
-                          <FaStar className="text-yellow-400" />
-                          <span className="text-yellow-400 font-bold">{caster.rating}</span>
-                        </div>
+                <h2 className="text-2xl font-orbitron font-bold text-white mb-6 flex items-center gap-3">
+                  <span className="text-3xl">{COUNTRIES[country as keyof typeof COUNTRIES]?.flag || '🌍'}</span>
+                  {COUNTRIES[country as keyof typeof COUNTRIES]?.name || country}
+                  <span className="text-lg text-gray-400">({casters.length})</span>
+                </h2>
+                
+                {/* Separate by type within country */}
+                {['caster', 'streamer'].map(type => {
+                  const typeCasters = casters.filter(c => c.type === type);
+                  if (typeCasters.length === 0) return null;
+                  
+                  return (
+                    <div key={type} className="mb-8">
+                      <h3 className="text-lg font-semibold text-gray-300 mb-4 flex items-center gap-2">
+                        {type === 'caster' ? '🎙️ Casters' : '📺 Streamers'} ({typeCasters.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {typeCasters.map((caster, index) => (
+                          <CasterCard key={caster.id} caster={caster} index={index} />
+                        ))}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-zinc-300 leading-relaxed">{caster.description}</p>
-
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-zinc-400 text-sm">Seguidores</span>
-                        <FaUsers className="text-cyan-400" />
-                      </div>
-                      <div className="text-2xl font-black text-cyan-400">{caster.followers.toLocaleString()}</div>
-                    </div>
-                    <div className="bg-white/5 backdrop-blur-xl rounded-xl p-4 border border-white/10">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-zinc-400 text-sm">Experiência</span>
-                        <FaGlobe className="text-purple-400" />
-                      </div>
-                      <div className="text-2xl font-black text-purple-400">{caster.experience}</div>
-                    </div>
-                  </div>
-
-                  {/* Languages */}
-                  <div className="space-y-2">
-                    <p className="text-zinc-300 text-sm font-semibold">Idiomas:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {caster.languages.map((lang) => (
-                        <span key={lang} className="bg-white/5 text-white px-3 py-1 rounded-lg text-sm font-semibold border border-white/10">
-                          {getLanguageFlag(lang)} {lang.toUpperCase()}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Current Game (if live) */}
-                  {caster.isLive && caster.currentGame && (
-                    <div className="bg-gradient-to-r from-red-500/20 to-pink-500/20 border border-red-500/30 rounded-xl p-4">
-                      <p className="text-red-300 text-sm font-semibold">🎮 A jogar agora:</p>
-                      <p className="text-white font-bold">{caster.currentGame}</p>
-                    </div>
-                  )}
-
-                  {/* Achievements */}
-                  <div className="space-y-2">
-                    <p className="text-zinc-300 text-sm font-semibold">Conquistas:</p>
-                    <div className="space-y-1">
-                      {caster.achievements.slice(0, 2).map((achievement, idx) => (
-                        <div key={idx} className="flex items-center space-x-2">
-                          <span className="text-yellow-400">🏆</span>
-                          <span className="text-zinc-400 text-sm">{achievement}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Social Links */}
-                  <div className="flex gap-2">
-                    {caster.socials.twitch && (
-                      <a href={caster.socials.twitch} target="_blank" rel="noopener noreferrer" className="flex-1 bg-gradient-to-r from-purple-500/20 to-purple-600/20 hover:from-purple-500/30 hover:to-purple-600/30 text-purple-300 px-3 py-2 rounded-xl font-semibold transition-all duration-300 border border-purple-500/30 hover:border-purple-400/50 text-sm flex items-center justify-center">
-                        <FaTwitch className="mr-2" />
-                        Twitch
-                      </a>
-                    )}
-                    {caster.socials.youtube && (
-                      <a href={caster.socials.youtube} target="_blank" rel="noopener noreferrer" className="flex-1 bg-gradient-to-r from-red-500/20 to-red-600/20 hover:from-red-500/30 hover:to-red-600/30 text-red-300 px-3 py-2 rounded-xl font-semibold transition-all duration-300 border border-red-500/30 hover:border-red-400/50 text-sm flex items-center justify-center">
-                        <FaYoutube className="mr-2" />
-                        YouTube
-                      </a>
-                    )}
-                    {caster.socials.discord && (
-                      <a href={caster.socials.discord} target="_blank" rel="noopener noreferrer" className="flex-1 bg-gradient-to-r from-blue-500/20 to-blue-600/20 hover:from-blue-500/30 hover:to-blue-600/30 text-blue-300 px-3 py-2 rounded-xl font-semibold transition-all duration-300 border border-blue-500/30 hover:border-blue-400/50 text-sm flex items-center justify-center">
-                        <FaDiscord className="mr-2" />
-                        Discord
-                      </a>
-                    )}
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4">
-                    <button className="flex-1 bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-2xl font-semibold transition-all duration-300 backdrop-blur-xl border border-white/10 text-center hover:border-cyan-400/30 hover:scale-105">
-                      👁️ Ver Perfil
-                    </button>
-                    {caster.isLive ? (
-                      <button className="flex-1 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-4 py-3 rounded-2xl font-bold transition-all duration-300 shadow-2xl hover:scale-105">
-                        📺 Assistir
-                      </button>
-                    ) : (
-                      <button className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white px-4 py-3 rounded-2xl font-bold transition-all duration-300 shadow-2xl hover:scale-105">
-                        🔔 Seguir
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Hover overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/5 via-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                </div>
+                  );
+                })}
               </motion.div>
             ))}
           </motion.div>
+        )}
 
-          {/* Call to Action */}
+        {/* Empty State */}
+        {filteredCasters.length === 0 && (
           <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1 }}
-            className="text-center space-y-4 mt-16"
+            className="text-center py-16"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
           >
-            <div className="bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl p-8 border border-cyan-500/20 backdrop-blur-xl">
-              <h4 className="text-2xl font-black text-white mb-4">
-                Queres ser caster ou streamer?
-              </h4>
-              <p className="text-zinc-300 mb-6">
-                Junta-te à nossa comunidade de criadores de conteúdo da península ibérica. 
-                O CS2Hub oferece suporte e visibilidade para novos talentos.
-              </p>
-              <button className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white px-8 py-4 rounded-2xl transition-all duration-300 shadow-2xl font-bold">
-                🚀 Candidatar-me
-              </button>
-            </div>
+            <Radio className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-400 mb-2">
+              Nenhum creator encontrado
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Tenta ajustar os filtros ou pesquisar por outros termos
+            </p>
+            <Button 
+              variant="outline" 
+              onClick={() => setFilters({})}
+              className="border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Limpar Filtros
+            </Button>
           </motion.div>
-        </div>
+        )}
       </div>
-    </>
+    </main>
   );
 }
 
-export default CastersPage; 
+// Featured Caster Card (Large)
+function FeaturedCasterCard({ caster }: { caster: typeof mockCasters[0] }) {
+  const [isFavorite, setIsFavorite] = useState(false);
+  
+  const quickActions = [
+    ...(caster.socials.twitch ? [createQuickActions.externalLink(() => {
+      window.open(`https://twitch.tv/${caster.socials.twitch}`, '_blank');
+    }, 'Twitch')] : []),
+    ...(caster.socials.youtube ? [createQuickActions.externalLink(() => {
+      window.open(`https://youtube.com/@${caster.socials.youtube}`, '_blank');
+    }, 'YouTube')] : []),
+    createQuickActions.share(() => {
+      navigator.share?.({
+        title: caster.name,
+        text: caster.description,
+        url: window.location.href
+      });
+    })
+  ];
+
+  return (
+    <div className="bg-gradient-to-r from-purple-900/20 via-blue-900/20 to-cyan-900/20 border border-purple-400/30 rounded-xl p-8 relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-cyan-500/10" />
+      
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Profile Section */}
+        <div className="text-center lg:text-left">
+          <div className="relative inline-block mb-4">
+            <img 
+              src={caster.avatar} 
+              alt={caster.name}
+              className="w-32 h-32 rounded-full border-4 border-purple-400/50 mx-auto lg:mx-0"
+            />
+            {caster.isLive && (
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold animate-pulse">
+                AO VIVO
+              </div>
+            )}
+          </div>
+          
+          <h3 className="text-2xl font-orbitron font-bold text-white mb-2">{caster.name}</h3>
+          <p className="text-cyan-400 font-medium mb-2">{caster.specialty}</p>
+          <p className="text-gray-300 text-sm mb-4">{caster.description}</p>
+          
+          <div className="flex items-center justify-center lg:justify-start gap-4 mb-4">
+            <div className="text-center">
+              <div className="text-purple-400 font-bold text-lg">{caster.followers.toLocaleString()}</div>
+              <div className="text-xs text-gray-400">Seguidores</div>
+            </div>
+            <div className="text-center">
+              <div className="text-yellow-400 font-bold text-lg">{caster.rating}</div>
+              <div className="text-xs text-gray-400">Rating</div>
+            </div>
+            {caster.isLive && (
+              <div className="text-center">
+                <div className="text-red-400 font-bold text-lg">{caster.currentViewers}</div>
+                <div className="text-xs text-gray-400">Viewers</div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Status & Info Section */}
+        <div className="space-y-4">
+          {caster.isLive ? (
+            <div className="bg-red-500/20 border border-red-400/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Play className="w-5 h-5 text-red-400" />
+                <span className="text-red-400 font-bold">AO VIVO</span>
+              </div>
+              <p className="text-white font-medium">{caster.currentGame}</p>
+              <p className="text-gray-300 text-sm">{caster.currentViewers} viewers assistindo</p>
+            </div>
+          ) : (
+            <div className="bg-gray-500/20 border border-gray-400/50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="w-5 h-5 text-gray-400" />
+                <span className="text-gray-400 font-bold">OFFLINE</span>
+              </div>
+              <p className="text-gray-300">Último stream: {caster.lastStream || 'N/A'}</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <h4 className="text-white font-semibold">Idiomas:</h4>
+            <div className="flex flex-wrap gap-2">
+              {caster.languages.map((lang, i) => (
+                <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">
+                  {lang}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-white font-semibold">Conquistas:</h4>
+            <div className="flex flex-wrap gap-2">
+              {caster.achievements.slice(0, 3).map((achievement, i) => (
+                <span key={i} className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded-full">
+                  {achievement}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-white font-semibold">Ações</h4>
+            <FavoriteButton
+              isFavorite={isFavorite}
+              onToggle={setIsFavorite}
+            />
+          </div>
+          
+          <QuickActions actions={quickActions} showLabels={true} orientation="vertical" />
+
+          {caster.upcomingEvents && caster.upcomingEvents.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-white font-semibold">Próximos Eventos:</h4>
+              {caster.upcomingEvents.slice(0, 2).map((event, i) => (
+                <div key={i} className="bg-white/5 rounded-lg p-3">
+                  <p className="text-cyan-400 font-medium text-sm">{event.name}</p>
+                  <p className="text-gray-400 text-xs">{event.date} • {event.type}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Regular Caster Card
+function CasterCard({ caster, index }: { caster: typeof mockCasters[0]; index: number }) {
+  const [isFavorite, setIsFavorite] = useState(false);
+  
+  const quickActions = [
+    ...(caster.socials.twitch ? [createQuickActions.externalLink(() => {
+      window.open(`https://twitch.tv/${caster.socials.twitch}`, '_blank');
+    }, 'Twitch')] : []),
+    ...(caster.socials.youtube ? [createQuickActions.externalLink(() => {
+      window.open(`https://youtube.com/@${caster.socials.youtube}`, '_blank');
+    }, 'YouTube')] : []),
+    createQuickActions.share(() => {
+      navigator.share?.({
+        title: caster.name,
+        text: caster.description,
+        url: window.location.href
+      });
+    })
+  ];
+
+  return (
+    <motion.div
+      className={`bg-white/5 border rounded-xl p-6 hover:border-cyan-400/50 transition-all duration-300 group ${
+        caster.isLive ? 'border-red-400/30 bg-red-500/5' : 'border-white/10'
+      }`}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+      whileHover={{ y: -4 }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <img 
+              src={caster.avatar} 
+              alt={caster.name}
+              className="w-12 h-12 rounded-full border-2 border-cyan-400/50"
+            />
+            {caster.isLive && (
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 border-2 border-black rounded-full animate-pulse" />
+            )}
+          </div>
+          <div>
+            <h3 className="font-orbitron font-bold text-white group-hover:text-cyan-400 transition-colors">
+              {caster.name}
+            </h3>
+            <p className="text-sm text-gray-400">
+              {COUNTRIES[caster.country as keyof typeof COUNTRIES]?.flag || '🌍'} {caster.specialty}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {caster.isLive && (
+            <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" title="Ao vivo" />
+          )}
+          <FavoriteButton
+            isFavorite={isFavorite}
+            onToggle={setIsFavorite}
+            size="sm"
+          />
+        </div>
+      </div>
+
+      {/* Status */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+          caster.type === 'caster' 
+            ? 'text-purple-400 bg-purple-500/20' 
+            : 'text-blue-400 bg-blue-500/20'
+        }`}>
+          {caster.type === 'caster' ? '🎙️ Caster' : '📺 Streamer'}
+        </span>
+        {caster.isLive && (
+          <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 animate-pulse">
+            🔴 AO VIVO
+          </span>
+        )}
+      </div>
+
+      {/* Live Content */}
+      {caster.isLive && caster.currentGame && (
+        <div className="mb-4 p-3 bg-red-500/10 rounded-lg border border-red-400/20">
+          <div className="flex items-center gap-2 mb-1">
+            <Play className="w-4 h-4 text-red-400" />
+            <span className="text-xs text-red-400 font-medium">AGORA</span>
+          </div>
+          <p className="text-sm text-white font-medium">{caster.currentGame}</p>
+          <p className="text-xs text-gray-300">{caster.currentViewers} viewers</p>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="text-center">
+          <div className="text-cyan-400 font-bold text-lg">{(caster.followers / 1000).toFixed(1)}K</div>
+          <div className="text-xs text-gray-400">Seguidores</div>
+        </div>
+        <div className="text-center">
+          <div className="text-yellow-400 font-bold text-lg">{caster.rating}</div>
+          <div className="text-xs text-gray-400">Rating</div>
+        </div>
+        <div className="text-center">
+          <div className="text-green-400 font-bold text-lg">{caster.experience.split('+')[0]}</div>
+          <div className="text-xs text-gray-400">Anos</div>
+        </div>
+      </div>
+
+      {/* Languages */}
+      <div className="mb-4">
+        <div className="flex flex-wrap gap-1">
+          {caster.languages.map((lang, i) => (
+            <span key={i} className="px-2 py-1 bg-white/10 text-white text-xs rounded-full">
+              {lang}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <QuickActions actions={quickActions} className="justify-center" />
+    </motion.div>
+  );
+}
+
+export default CastersPage;

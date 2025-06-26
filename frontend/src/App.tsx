@@ -26,6 +26,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import AdminPage from './pages/AdminPage'
 import ResultsPage from './pages/ResultsPage'
+import { ProfilePage } from './pages/ProfilePage'
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
           {/* Autenticação */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
 
           {/* Admin */}
           <Route path="/admin" element={<AdminPage />} />

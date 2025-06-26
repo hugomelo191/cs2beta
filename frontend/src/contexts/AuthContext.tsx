@@ -8,13 +8,28 @@ interface User {
   avatar?: string;
 }
 
+interface RegistrationData {
+  email: string;
+  username: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  country: string;
+  nickname: string;
+  faceitNickname: string;
+  age?: number;
+  position?: string;
+  bio?: string;
+  socials?: Record<string, string>;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (username: string, email: string, password: string) => Promise<boolean>;
+  register: (data: RegistrationData) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,27 +102,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('cs2hub_user');
   };
 
-  const register = async (username: string, email: string, password: string): Promise<boolean> => {
+  const register = async (data: RegistrationData): Promise<boolean> => {
     // Simular delay de rede
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     // Verificar se o email já existe
-    const existingUser = mockUsers.find(u => u.email === email);
+    const existingUser = mockUsers.find(u => u.email === data.email);
     if (existingUser) {
       return false;
     }
 
-    // Criar novo utilizador
+    // Criar novo utilizador (simulação - no futuro será chamada à API)
     const newUser: User = {
       id: Date.now().toString(),
-      username,
-      email,
+      username: data.username,
+      email: data.email,
       role: 'user',
     };
 
     setUser(newUser);
     setIsAuthenticated(true);
     localStorage.setItem('cs2hub_user', JSON.stringify(newUser));
+    
+    // Aqui seria feita a chamada real à API:
+    // const response = await fetch('/api/auth/register', { method: 'POST', body: JSON.stringify(data) });
+    
     return true;
   };
 

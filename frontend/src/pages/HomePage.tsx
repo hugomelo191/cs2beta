@@ -62,7 +62,7 @@ export function HomePage() {
                 Visibilidade
               </div>
               <div className="bg-purple-500/20 border border-purple-500/50 px-3 py-1 rounded-full text-sm font-semibold">
-                Draft Real
+                Network Zone
               </div>
             </motion.div>
 
@@ -98,7 +98,7 @@ export function HomePage() {
                   className="text-lg px-8 py-4 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700"
                   onClick={() => navigate('/draft')}
                 >
-                  Entrar no Draft
+                  Entrar na Network Zone
                   <Target className="ml-2 h-5 w-5" />
                 </Button>
               </motion.div>
@@ -198,8 +198,8 @@ export function HomePage() {
                 <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
                   <Users className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-xl font-orbitron font-bold text-white mb-2">Jogadores Disponíveis</h3>
-                <p className="text-gray-400 text-sm">Encontra o talento que a tua equipa precisa</p>
+                <h3 className="text-xl font-orbitron font-bold text-white mb-2">Network Zone</h3>
+                <p className="text-gray-400 text-sm">Conecta jogadores e equipas ativamente</p>
               </Card>
             </motion.div>
 
@@ -350,8 +350,8 @@ export function HomePage() {
             {[
               {
                 icon: Target,
-                title: "Draft Competitivo Real",
-                description: "Sistema de draft profissional para equipas e jogadores",
+                title: "Network Zone Ativa",
+                description: "Conecta jogadores e equipas em tempo real",
                 color: "from-green-500 to-emerald-600"
               },
               {

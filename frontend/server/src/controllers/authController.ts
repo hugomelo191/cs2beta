@@ -2,24 +2,25 @@ import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db } from '../db/connection.js';
-import { users } from '../db/schema.js';
+import { users, players } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { LoginSchema, RegisterSchema } from '../types/index.js';
+import { faceitService } from '../services/faceitService.js';
 
 // Generate JWT Token
 const generateToken = (id: string) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  return jwt.sign({ id }, process.env['JWT_SECRET']!, {
+    expiresIn: process.env['JWT_EXPIRES_IN'] || '7d',
   });
 };
 
-// @desc    Register user
+// @desc    Register user with mandatory player profile
 // @route   POST /api/auth/register
 // @access  Public
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Validate input
+    // Validate input - now includes player data
     const validatedData = RegisterSchema.parse(req.body);
 
     // Check if user already exists
@@ -39,18 +40,76 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       throw new CustomError('Username already taken', 400);
     }
 
+    // Check if nickname is already taken
+    const existingPlayer = await db.query.players.findFirst({
+      where: eq(players.nickname, validatedData.nickname),
+    });
+
+    if (existingPlayer) {
+      throw new CustomError('Player nickname already taken', 400);
+    }
+
+    // Validate Faceit nickname and get data
+    let faceitData = null;
+    try {
+      faceitData = await faceitService.getCompletePlayerData(validatedData.faceitNickname);
+      if (!faceitData) {
+        throw new CustomError('Nickname do Faceit não encontrado. Verifica se está correto.', 400);
+      }
+    } catch (error: any) {
+      if (error.message.includes('não encontrado')) {
+        throw error;
+      }
+      console.warn('⚠️ Erro ao buscar dados Faceit, continuando sem dados:', error.message);
+    }
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(validatedData.password, salt);
 
-    // Create user
+    // Create user and player in transaction
     const [newUser] = await db.insert(users).values({
       email: validatedData.email,
       username: validatedData.username,
       password: hashedPassword,
       firstName: validatedData.firstName,
       lastName: validatedData.lastName,
-      country: validatedData.country,
+      country: faceitData?.country || validatedData.country,
+    }).returning();
+
+    // Create mandatory player profile with Faceit data
+    const [newPlayer] = await db.insert(players).values({
+      userId: newUser.id,
+      nickname: validatedData.nickname,
+      realName: validatedData.realName || `${validatedData.firstName} ${validatedData.lastName}`.trim(),
+      country: faceitData?.country || validatedData.country,
+      age: validatedData.age || null,
+      position: validatedData.position,
+      bio: validatedData.bio,
+      // Faceit integration
+      faceitNickname: faceitData?.faceit_nickname || validatedData.faceitNickname,
+      faceitId: faceitData?.faceit_id || null,
+      faceitElo: faceitData?.faceit_elo || null,
+      faceitLevel: faceitData?.faceit_level || null,
+      steamId: faceitData?.steam_id || null,
+      faceitUrl: faceitData?.faceit_url || null,
+      faceitStatsUpdatedAt: faceitData ? new Date() : null,
+      // Stats from Faceit
+      stats: faceitData?.stats || {
+        kd: 0,
+        adr: 0,
+        maps_played: 0,
+        wins: 0,
+        losses: 0,
+        views: 0,
+      },
+      achievements: [],
+      socials: {
+        ...validatedData.socials,
+        faceit: faceitData?.faceit_url,
+        steam: faceitData?.steam_url,
+      },
+      avatar: faceitData?.avatar || null,
     }).returning();
 
     // Generate token
@@ -61,9 +120,10 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'User and player profile registered successfully',
       data: {
         user: userWithoutPassword,
+        player: newPlayer,
         token,
       },
     });
@@ -125,13 +185,20 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
-// @desc    Get current user
+// @desc    Get current user with player profile
 // @route   GET /api/auth/me
 // @access  Private
 export const getMe = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = await db.query.users.findFirst({
       where: eq(users.id, (req as any).user.id),
+      with: {
+        players: {
+          with: {
+            team: true
+          }
+        }
+      }
     });
 
     if (!user) {
@@ -141,9 +208,15 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
     // Remove password from response
     const { password, ...userWithoutPassword } = user;
 
+    // Get the main player profile (should be only one per user)
+    const playerProfile = user.players?.[0] || null;
+
     res.json({
       success: true,
-      data: userWithoutPassword,
+      data: {
+        user: userWithoutPassword,
+        player: playerProfile,
+      },
     });
   } catch (error) {
     next(error);

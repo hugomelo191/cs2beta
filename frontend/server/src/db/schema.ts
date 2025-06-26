@@ -57,6 +57,16 @@ export const players = pgTable('players', {
   achievements: json('achievements'),
   stats: json('stats'), // { kd, adr, maps_played, etc }
   socials: json('socials'),
+  
+  // Faceit integration fields
+  faceitNickname: varchar('faceit_nickname', { length: 50 }),
+  faceitId: varchar('faceit_id', { length: 100 }),
+  faceitElo: integer('faceit_elo'),
+  faceitLevel: integer('faceit_level'),
+  steamId: varchar('steam_id', { length: 50 }),
+  faceitUrl: text('faceit_url'),
+  faceitStatsUpdatedAt: timestamp('faceit_stats_updated_at'),
+  
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

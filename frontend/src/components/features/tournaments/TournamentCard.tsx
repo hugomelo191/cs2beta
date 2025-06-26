@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 
 interface TournamentCardProps {
   tournament: Tournament;
+  featured?: boolean;
 }
 
 const statusStyles = {
@@ -15,7 +16,7 @@ const statusStyles = {
   'Cancelado': 'bg-red-500/10 text-red-400 border-red-500/30',
 };
 
-export function TournamentCard({ tournament }: TournamentCardProps) {
+export function TournamentCard({ tournament, featured = false }: TournamentCardProps) {
   const { name, status, startDate, endDate, format, prizePool, bannerUrl, id } = tournament;
 
   const formattedStartDate = new Date(startDate).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
@@ -23,7 +24,11 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
 
   return (
     <motion.div 
-      className="bg-gray-900/50 border border-white/10 rounded-xl flex flex-col group overflow-hidden transition-all duration-300 hover:border-cyan-400/50"
+      className={`bg-gray-900/50 border rounded-xl flex flex-col group overflow-hidden transition-all duration-300 hover:border-cyan-400/50 ${
+        featured 
+          ? 'border-cyan-400/30 shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-400/20' 
+          : 'border-white/10'
+      }`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}

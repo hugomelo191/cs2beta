@@ -324,4 +324,166 @@ export const getFeaturedTeams = async (req: Request, res: Response, next: NextFu
   } catch (error) {
     next(error);
   }
+};
+
+// @desc    Create team for current player (becomes captain)
+// @route   POST /api/teams/create-my-team
+// @access  Private
+export const createMyTeam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+
+    // Get user's player profile
+    const userPlayer = await db.query.players.findFirst({
+      where: eq(players.userId, userId),
+    });
+
+    if (!userPlayer) {
+      throw new CustomError('Player profile not found. Please complete your player profile first.', 404);
+    }
+
+    // Check if player already has a team
+    if (userPlayer.teamId) {
+      throw new CustomError('You are already part of a team. Leave your current team first.', 400);
+    }
+
+    // Validate input
+    const validatedData = CreateTeamSchema.parse(req.body);
+
+    // Check if team tag already exists
+    const existingTeam = await db.query.teams.findFirst({
+      where: eq(teams.tag, validatedData.tag),
+    });
+
+    if (existingTeam) {
+      throw new CustomError('Team tag already exists', 400);
+    }
+
+    // Create team
+    const [newTeam] = await db.insert(teams).values({
+      ...validatedData,
+      achievements: [],
+      socials: validatedData.socials || {},
+    }).returning();
+
+    // Update player to be part of this team
+    await db.update(players)
+      .set({ 
+        teamId: newTeam.id,
+        role: 'player', // Can be changed later to captain
+        updatedAt: new Date()
+      })
+      .where(eq(players.id, userPlayer.id));
+
+    // Add player as team member with captain role
+    await db.insert(teamMembers).values({
+      teamId: newTeam.id,
+      playerId: userPlayer.id,
+      role: 'captain',
+      isActive: true,
+    });
+
+    // Get team with relations
+    const teamWithRelations = await db.query.teams.findFirst({
+      where: eq(teams.id, newTeam.id),
+      with: {
+        players: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                username: true,
+                avatar: true,
+              }
+            }
+          }
+        },
+        members: {
+          with: {
+            player: {
+              with: {
+                user: {
+                  columns: {
+                    id: true,
+                    username: true,
+                    avatar: true,
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Team created successfully! You are now the team captain.',
+      data: teamWithRelations,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Leave current team
+// @route   POST /api/teams/leave
+// @access  Private
+export const leaveTeam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+
+    // Get user's player profile
+    const userPlayer = await db.query.players.findFirst({
+      where: eq(players.userId, userId),
+      with: {
+        team: true
+      }
+    });
+
+    if (!userPlayer || !userPlayer.teamId) {
+      throw new CustomError('You are not part of any team', 400);
+    }
+
+    // Check if user is the only member/captain
+    const teamMembers = await db.query.teamMembers.findMany({
+      where: and(
+        eq(teamMembers.teamId, userPlayer.teamId),
+        eq(teamMembers.isActive, true)
+      )
+    });
+
+    // If user is the only member, delete the team
+    if (teamMembers.length === 1) {
+      await db.delete(teams).where(eq(teams.id, userPlayer.teamId));
+    } else {
+      // Remove from team members
+      await db.update(teamMembers)
+        .set({ 
+          isActive: false,
+          leftAt: new Date() 
+        })
+        .where(and(
+          eq(teamMembers.teamId, userPlayer.teamId),
+          eq(teamMembers.playerId, userPlayer.id)
+        ));
+    }
+
+    // Update player to remove team association
+    await db.update(players)
+      .set({ 
+        teamId: null,
+        updatedAt: new Date()
+      })
+      .where(eq(players.id, userPlayer.id));
+
+    res.json({
+      success: true,
+      message: teamMembers.length === 1 
+        ? 'Team disbanded successfully as you were the only member.'
+        : 'Left team successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
 }; 

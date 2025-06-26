@@ -1,6 +1,10 @@
 import { Team } from "@/types/teams";
 import { Tournament, League } from "@/types/tournaments";
 
+// Utility to create dates relative to now
+const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+const hoursAgo = (hours: number) => new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+
 export const mockPlayers = [
   {
     id: 1,
@@ -12,6 +16,13 @@ export const mockPlayers = [
     elo: 3000,
     modality: 'CS2',
     status: 'Disponível',
+    // Network post data
+    hasActivePost: true,
+    postDate: hoursAgo(2),
+    postContent: 'Procuro equipa para torneios. Disponível todas as noites depois das 20h. Faceit Level 10, bom comunicador.',
+    lookingFor: 'Equipa competitiva',
+    availability: 'Noites (20h-24h)',
+    lastActiveDate: hoursAgo(1),
   },
   {
     id: 2,
@@ -23,6 +34,12 @@ export const mockPlayers = [
     elo: 2700,
     modality: 'CS2',
     status: 'Disponível',
+    hasActivePost: true,
+    postDate: daysAgo(1),
+    postContent: 'AWPer experiente. Procuro equipa espanhola para fim de semana. Tenho experiência em ESL.',
+    lookingFor: 'Equipa fim de semana',
+    availability: 'Fins de semana',
+    lastActiveDate: hoursAgo(12),
   },
   {
     id: 3,
@@ -34,6 +51,46 @@ export const mockPlayers = [
     elo: 3200,
     modality: 'CS2',
     status: 'Busy',
+    hasActivePost: false,
+    postDate: daysAgo(20), // Old post - inactive
+    postContent: 'IGL experiente procura equipa séria.',
+    lookingFor: 'Equipa profissional',
+    availability: 'Flexível',
+    lastActiveDate: daysAgo(18),
+  },
+  {
+    id: 4,
+    nickname: 'Phoenix',
+    country: 'ES',
+    avatar: '/featured/player1.jpg',
+    style: 'Support',
+    faceitLevel: 8,
+    elo: 2400,
+    modality: 'CS2',
+    status: 'Disponível',
+    hasActivePost: true,
+    postDate: hoursAgo(6),
+    postContent: 'Support dedicado. Procuro equipa para crescer junto. Bom ambiente e dedicação.',
+    lookingFor: 'Equipa amigável',
+    availability: 'Tardes e noites',
+    lastActiveDate: hoursAgo(2),
+  },
+  {
+    id: 5,
+    nickname: 'Viper',
+    country: 'PT',
+    avatar: '/featured/player1.jpg',
+    style: 'Rifler',
+    faceitLevel: 9,
+    elo: 2650,
+    modality: 'CS2',
+    status: 'Disponível',
+    hasActivePost: false,
+    postDate: daysAgo(16), // Too old
+    postContent: 'Rifler consistente.',
+    lookingFor: 'Qualquer equipa',
+    availability: 'Variável',
+    lastActiveDate: daysAgo(15),
   },
 ] as const;
 
@@ -88,7 +145,14 @@ export const mockTeamsPage: Team[] = [
     ],
     substitutes: [],
     staff: [{ id: 's1', nickname: 'Zeus', role: 'Treinador', avatar: '/featured/player1.jpg' }], 
-    competitions: []
+    competitions: [],
+    // Network post data
+    hasActivePost: true,
+    postDate: hoursAgo(4),
+    postContent: 'Procuramos AWPer experiente para completar roster. Treinos 3x semana, torneios fim de semana. Ambiente profissional mas descontraído.',
+    lookingForRoles: ['AWPer'],
+    requirements: 'Faceit 8+, disponibilidade regular, bom microfone',
+    lastActiveDate: hoursAgo(1),
   },
   {
     id: '2',
@@ -107,7 +171,13 @@ export const mockTeamsPage: Team[] = [
     ],
     substitutes: [],
     staff: [],
-    competitions: []
+    competitions: [],
+    hasActivePost: false,
+    postDate: daysAgo(25), // Too old
+    postContent: 'Equipa completa no momento.',
+    lookingForRoles: [],
+    requirements: '',
+    lastActiveDate: daysAgo(20),
   },
   {
     id: '3',
@@ -125,7 +195,13 @@ export const mockTeamsPage: Team[] = [
     ],
     substitutes: [],
     staff: [],
-    competitions: []
+    competitions: [],
+    hasActivePost: true,
+    postDate: daysAgo(3),
+    postContent: 'Procuramos Entry Fragger e IGL motivados. Foco em torneios portugueses e crescimento conjunto. Ambiente familiar.',
+    lookingForRoles: ['Entry Fragger', 'IGL'],
+    requirements: 'Português, Faceit 6+, compromisso',
+    lastActiveDate: hoursAgo(8),
   },
   {
     id: '4',
@@ -141,7 +217,38 @@ export const mockTeamsPage: Team[] = [
     mainLineup: [],
     substitutes: [],
     staff: [{ id: 's2', nickname: 'Mentor', role: 'Treinador', avatar: '/featured/player1.jpg' }], 
-    competitions: []
+    competitions: [],
+    hasActivePost: false,
+    postDate: daysAgo(30), // Very old
+    postContent: 'Academia fechada temporariamente.',
+    lookingForRoles: [],
+    requirements: '',
+    lastActiveDate: daysAgo(25),
+  },
+  {
+    id: '5',
+    name: 'Phoenix Squad',
+    logo: '/logos/default.svg',
+    country: 'ES',
+    description: 'Equipa emergente espanhola com sede de vitória.',
+    fullDescription: 'Phoenix Squad é uma nova equipa formada por jogadores veteranos que procuram um recomeço competitivo.',
+    modalities: ['CS2'],
+    recruiting: true,
+    averageElo: 2600,
+    socials: {},
+    mainLineup: [
+      { id: 'p6', nickname: 'Blaze', role: 'Support', avatar: '/featured/player1.jpg', elo: 2600 },
+      { id: 'p7', nickname: 'Flame', role: 'Rifler', avatar: '/featured/player1.jpg', elo: 2650 }
+    ],
+    substitutes: [],
+    staff: [],
+    competitions: [],
+    hasActivePost: true,
+    postDate: hoursAgo(10),
+    postContent: 'URGENTE: Precisamos de AWPer e Entry Fragger para torneio este fim de semana! Experiência em ligas necessária.',
+    lookingForRoles: ['AWPer', 'Entry Fragger'],
+    requirements: 'Disponível fins de semana, Faceit 7+',
+    lastActiveDate: hoursAgo(3),
   }
 ];
 
