@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Filter, Users, Radio, Globe, Star, Play, Eye, Heart, MessageCircle, ExternalLink, TrendingUp, Clock, Zap } from 'lucide-react';
+import { Search, Filter, Users, Radio, Globe, Star, Play, Eye, Heart, MessageCircle, ExternalLink, TrendingUp, Clock, Zap, Plus, UserPlus, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { StatsCard } from '@/components/ui/StatsCard';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { FilterPanel, FilterGroup } from '@/components/ui/FilterPanel';
 import { FavoriteButton } from '@/components/ui/FavoriteButton';
 import { QuickActions, createQuickActions } from '@/components/ui/QuickActions';
+import { Modal } from '@/components/ui/modal/Modal';
 
 // Country mapping for intelligent filters
 const COUNTRIES = {
@@ -200,10 +201,262 @@ const mockCasters = [
   }
 ];
 
+// Caster Application Form Component
+function CasterApplicationForm({ onClose }: { onClose: () => void }) {
+  const [formData, setFormData] = useState({
+    type: 'caster',
+    name: '',
+    email: '',
+    country: 'PT',
+    languages: [],
+    specialty: '',
+    experience: '',
+    description: '',
+    socials: {
+      twitch: '',
+      youtube: '',
+      twitter: '',
+      discord: ''
+    },
+    portfolio: '',
+    availability: '',
+    motivation: ''
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Candidatura submetida:', formData);
+    // Aqui seria enviado para a API
+    alert('Candidatura enviada com sucesso! Entraremos em contacto em breve.');
+    onClose();
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...(prev as any)[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Type Selection */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Tipo de Candidatura
+        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            type="button"
+            onClick={() => handleInputChange('type', 'caster')}
+            className={`p-4 rounded-lg border-2 transition-all duration-300 ${
+              formData.type === 'caster'
+                ? 'border-purple-500 bg-purple-500/20 text-purple-400'
+                : 'border-gray-600 bg-gray-800 text-gray-400 hover:border-gray-500'
+            }`}
+          >
+            <Mic className="w-8 h-8 mx-auto mb-2" />
+            <div className="font-semibold">Caster</div>
+            <div className="text-xs">Narrativa de jogos e torneios</div>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleInputChange('type', 'streamer')}
+            className={`p-4 rounded-lg border-2 transition-all duration-300 ${
+              formData.type === 'streamer'
+                ? 'border-blue-500 bg-blue-500/20 text-blue-400'
+                : 'border-gray-600 bg-gray-800 text-gray-400 hover:border-gray-500'
+            }`}
+          >
+            <Play className="w-8 h-8 mx-auto mb-2" />
+            <div className="font-semibold">Streamer</div>
+            <div className="text-xs">Transmissões ao vivo</div>
+          </button>
+        </div>
+      </div>
+
+      {/* Basic Info */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Nome/Username
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+            placeholder="O teu nome artístico"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Email
+          </label>
+          <input
+            type="email"
+            required
+            value={formData.email}
+            onChange={(e) => handleInputChange('email', e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+            placeholder="teu.email@exemplo.com"
+          />
+        </div>
+      </div>
+
+      {/* Country & Languages */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            País
+          </label>
+          <select
+            value={formData.country}
+            onChange={(e) => handleInputChange('country', e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+          >
+            <option value="PT">🇵🇹 Portugal</option>
+            <option value="ES">🇪🇸 Espanha</option>
+            <option value="FR">🇫🇷 França</option>
+            <option value="IT">🇮🇹 Itália</option>
+            <option value="DE">🇩🇪 Alemanha</option>
+            <option value="UK">🇬🇧 Reino Unido</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Especialidade
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.specialty}
+            onChange={(e) => handleInputChange('specialty', e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+            placeholder="ex: Torneios Competitivos, Gameplay Educativo"
+          />
+        </div>
+      </div>
+
+      {/* Experience & Description */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Experiência
+        </label>
+        <select
+          value={formData.experience}
+          onChange={(e) => handleInputChange('experience', e.target.value)}
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+          required
+        >
+          <option value="">Seleciona a tua experiência</option>
+          <option value="1-2 anos">1-2 anos</option>
+          <option value="3-4 anos">3-4 anos</option>
+          <option value="5+ anos">5+ anos</option>
+          <option value="Profissional">Profissional (10+ anos)</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Descrição
+        </label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => handleInputChange('description', e.target.value)}
+          rows={3}
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+          placeholder="Conta-nos sobre ti, o teu estilo e experiência..."
+          required
+        />
+      </div>
+
+      {/* Social Links */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Redes Sociais
+        </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input
+            type="text"
+            value={formData.socials.twitch}
+            onChange={(e) => handleInputChange('socials.twitch', e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+            placeholder="Twitch username"
+          />
+          <input
+            type="text"
+            value={formData.socials.youtube}
+            onChange={(e) => handleInputChange('socials.youtube', e.target.value)}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+            placeholder="YouTube channel"
+          />
+        </div>
+      </div>
+
+      {/* Portfolio & Motivation */}
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Portfolio/Links de Trabalho
+        </label>
+        <input
+          type="url"
+          value={formData.portfolio}
+          onChange={(e) => handleInputChange('portfolio', e.target.value)}
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+          placeholder="Link para o teu melhor trabalho"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Motivação
+        </label>
+        <textarea
+          value={formData.motivation}
+          onChange={(e) => handleInputChange('motivation', e.target.value)}
+          rows={3}
+          className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-cyan-500"
+          placeholder="Porque queres juntar-te à nossa plataforma?"
+          required
+        />
+      </div>
+
+      {/* Submit Buttons */}
+      <div className="flex gap-4">
+        <Button
+          type="button"
+          onClick={onClose}
+          variant="secondary"
+          className="flex-1"
+        >
+          Cancelar
+        </Button>
+        <Button
+          type="submit"
+          className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+        >
+          Enviar Candidatura
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function CastersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [viewMode, setViewMode] = useState<'grid' | 'featured'>('featured');
+  const [showCasterForm, setShowCasterForm] = useState(false);
 
   // Intelligent filter generation based on available data
   const intelligentFilters = useMemo((): FilterGroup[] => {
@@ -378,6 +631,32 @@ export function CastersPage() {
             Descobre a voz da scene mundial! Casters profissionais e streamers de toda a Europa conectados numa só plataforma.
           </p>
         </motion.div>
+
+        {/* Join as Caster/Streamer Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex justify-center mb-8"
+        >
+          <Button
+            onClick={() => setShowCasterForm(true)}
+            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+          >
+            <UserPlus className="w-6 h-6 mr-3" />
+            Juntar-me como Caster/Streamer
+            <Mic className="w-6 h-6 ml-3" />
+          </Button>
+        </motion.div>
+
+        {/* Caster Application Modal */}
+        <Modal
+          isOpen={showCasterForm}
+          onClose={() => setShowCasterForm(false)}
+          title="🎙️ Candidatura a Caster/Streamer"
+        >
+          <CasterApplicationForm onClose={() => setShowCasterForm(false)} />
+        </Modal>
 
         {/* Stats Dashboard */}
         <motion.div 
