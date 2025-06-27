@@ -223,12 +223,46 @@ function CasterApplicationForm({ onClose }: { onClose: () => void }) {
     motivation: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Candidatura submetida:', formData);
-    // Aqui seria enviado para a API
-    alert('Candidatura enviada com sucesso! Entraremos em contacto em breve.');
-    onClose();
+    
+    try {
+      // Preparar dados para a API
+      const apiData = {
+        type: formData.type,
+        name: formData.name,
+        email: formData.email,
+        country: formData.country.toLowerCase(),
+        experience: formData.experience,
+        specialty: formData.specialty,
+        description: formData.description,
+        twitchUsername: formData.socials.twitch,
+        youtubeChannel: formData.socials.youtube,
+        portfolio: formData.portfolio,
+        motivation: formData.motivation
+      };
+
+      // Enviar para a API
+      const response = await fetch('/api/caster-applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(apiData),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('🎉 Candidatura enviada com sucesso! Entraremos em contacto em breve.');
+        onClose();
+      } else {
+        alert('❌ Erro ao enviar candidatura: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Erro ao enviar candidatura:', error);
+      alert('❌ Erro de conexão. Tenta novamente mais tarde.');
+    }
   };
 
   const handleInputChange = (field: string, value: any) => {

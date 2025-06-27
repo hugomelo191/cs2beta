@@ -190,6 +190,28 @@ export const tournamentParticipants = pgTable('tournament_participants', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
+// Caster Applications table
+export const casterApplications = pgTable('caster_applications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  type: varchar('type', { length: 20 }).notNull(), // caster, streamer
+  name: varchar('name', { length: 100 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  country: varchar('country', { length: 2 }).notNull(),
+  experience: varchar('experience', { length: 50 }).notNull(),
+  specialty: varchar('specialty', { length: 100 }),
+  description: text('description'),
+  twitchUsername: varchar('twitch_username', { length: 100 }),
+  youtubeChannel: varchar('youtube_channel', { length: 100 }),
+  portfolio: text('portfolio'),
+  motivation: text('motivation'),
+  status: varchar('status', { length: 20 }).default('pending'), // pending, approved, rejected
+  reviewedBy: uuid('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+  reviewedAt: timestamp('reviewed_at'),
+  reviewNotes: text('review_notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   players: many(players),

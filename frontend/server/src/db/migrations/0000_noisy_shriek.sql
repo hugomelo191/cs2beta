@@ -1,0 +1,271 @@
+CREATE TABLE IF NOT EXISTS "caster_applications" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"type" varchar(20) NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"email" varchar(255) NOT NULL,
+	"country" varchar(2) NOT NULL,
+	"experience" varchar(50) NOT NULL,
+	"specialty" varchar(100),
+	"description" text,
+	"twitch_username" varchar(100),
+	"youtube_channel" varchar(100),
+	"portfolio" text,
+	"motivation" text,
+	"status" varchar(20) DEFAULT 'pending',
+	"reviewed_by" uuid,
+	"reviewed_at" timestamp,
+	"review_notes" text,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "casters" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid,
+	"name" varchar(100) NOT NULL,
+	"type" varchar(20) NOT NULL,
+	"specialty" varchar(100),
+	"avatar" text,
+	"banner" text,
+	"bio" text,
+	"country" varchar(2) NOT NULL,
+	"languages" json,
+	"followers" integer DEFAULT 0,
+	"rating" numeric(3, 2) DEFAULT '0.00',
+	"experience" varchar(50),
+	"socials" json,
+	"is_live" boolean DEFAULT false,
+	"current_game" text,
+	"is_active" boolean DEFAULT true,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "draft_applications" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"draft_id" uuid,
+	"team_id" uuid,
+	"status" varchar(20) DEFAULT 'pending',
+	"message" text,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "drafts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"title" varchar(200) NOT NULL,
+	"description" text,
+	"tournament_id" uuid,
+	"organizer_id" uuid,
+	"max_teams" integer NOT NULL,
+	"current_teams" integer DEFAULT 0,
+	"start_date" timestamp NOT NULL,
+	"end_date" timestamp NOT NULL,
+	"status" varchar(20) DEFAULT 'open',
+	"requirements" json,
+	"is_public" boolean DEFAULT true,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "news" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"title" varchar(200) NOT NULL,
+	"excerpt" text,
+	"content" text NOT NULL,
+	"author" varchar(100) NOT NULL,
+	"image" text,
+	"category" varchar(20) NOT NULL,
+	"tags" json,
+	"views" integer DEFAULT 0,
+	"read_time" integer,
+	"is_published" boolean DEFAULT false,
+	"is_featured" boolean DEFAULT false,
+	"published_at" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "players" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid,
+	"team_id" uuid,
+	"nickname" varchar(50) NOT NULL,
+	"real_name" varchar(100),
+	"avatar" text,
+	"banner" text,
+	"country" varchar(2) NOT NULL,
+	"city" varchar(100),
+	"age" integer,
+	"role" varchar(20) DEFAULT 'player',
+	"position" varchar(20),
+	"bio" text,
+	"achievements" json,
+	"stats" json,
+	"socials" json,
+	"faceit_nickname" varchar(50),
+	"faceit_id" varchar(100),
+	"faceit_elo" integer,
+	"faceit_level" integer,
+	"steam_id" varchar(50),
+	"faceit_url" text,
+	"faceit_stats_updated_at" timestamp,
+	"is_active" boolean DEFAULT true,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "team_members" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"team_id" uuid,
+	"player_id" uuid,
+	"role" varchar(20) DEFAULT 'player',
+	"joined_at" timestamp DEFAULT now(),
+	"left_at" timestamp,
+	"is_active" boolean DEFAULT true
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "teams" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(100) NOT NULL,
+	"tag" varchar(10) NOT NULL,
+	"logo" text,
+	"banner" text,
+	"description" text,
+	"country" varchar(2) NOT NULL,
+	"city" varchar(100),
+	"founded" integer,
+	"website" text,
+	"socials" json,
+	"achievements" json,
+	"is_active" boolean DEFAULT true,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "teams_tag_unique" UNIQUE("tag")
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "tournament_participants" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"tournament_id" uuid,
+	"team_id" uuid,
+	"status" varchar(20) DEFAULT 'registered',
+	"seed" integer,
+	"final_position" integer,
+	"created_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "tournaments" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" varchar(200) NOT NULL,
+	"description" text,
+	"logo" text,
+	"banner" text,
+	"organizer" varchar(100) NOT NULL,
+	"prize_pool" numeric(10, 2),
+	"currency" varchar(3) DEFAULT 'EUR',
+	"start_date" timestamp NOT NULL,
+	"end_date" timestamp NOT NULL,
+	"registration_deadline" timestamp,
+	"max_teams" integer,
+	"current_teams" integer DEFAULT 0,
+	"format" varchar(50),
+	"maps" json,
+	"rules" text,
+	"status" varchar(20) DEFAULT 'upcoming',
+	"country" varchar(2),
+	"is_featured" boolean DEFAULT false,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "users" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"email" varchar(255) NOT NULL,
+	"username" varchar(100) NOT NULL,
+	"password" varchar(255) NOT NULL,
+	"first_name" varchar(100),
+	"last_name" varchar(100),
+	"avatar" text,
+	"bio" text,
+	"country" varchar(2) DEFAULT 'pt',
+	"role" varchar(20) DEFAULT 'user',
+	"is_verified" boolean DEFAULT false,
+	"is_active" boolean DEFAULT true,
+	"last_login" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_username_unique" UNIQUE("username")
+);
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "caster_applications" ADD CONSTRAINT "caster_applications_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "casters" ADD CONSTRAINT "casters_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "draft_applications" ADD CONSTRAINT "draft_applications_draft_id_drafts_id_fk" FOREIGN KEY ("draft_id") REFERENCES "drafts"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "draft_applications" ADD CONSTRAINT "draft_applications_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "drafts" ADD CONSTRAINT "drafts_tournament_id_tournaments_id_fk" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "drafts" ADD CONSTRAINT "drafts_organizer_id_users_id_fk" FOREIGN KEY ("organizer_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "players" ADD CONSTRAINT "players_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "players" ADD CONSTRAINT "players_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "team_members" ADD CONSTRAINT "team_members_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "team_members" ADD CONSTRAINT "team_members_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "players"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_tournament_id_tournaments_id_fk" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
