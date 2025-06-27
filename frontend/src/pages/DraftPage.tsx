@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Users, UserPlus, MessageCircle, Filter, TrendingUp, Globe, Star, Shield, Clock, AlertCircle } from 'lucide-react';
+import { Search, Users, UserPlus, MessageCircle, Filter, TrendingUp, Globe, Star, Shield, Clock, AlertCircle, PlusCircle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { StatsCard } from '@/components/ui/StatsCard';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { FilterPanel, FilterGroup } from '@/components/ui/FilterPanel';
 import { FavoriteButton } from '@/components/ui/FavoriteButton';
 import { QuickActions, createQuickActions } from '@/components/ui/QuickActions';
+import { Modal } from '@/components/ui/modal/Modal';
+import { useAuth } from '@/contexts/AuthContext';
 import { mockPlayers } from '@/lib/constants/mock-data';
 
 // Import teams data
@@ -132,10 +134,13 @@ const teamFilters: FilterGroup[] = [
 ];
 
 export function DraftPage() {
+  const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<'players' | 'teams'>('players');
   const [searchQuery, setSearchQuery] = useState('');
   const [playerFiltersState, setPlayerFiltersState] = useState<Record<string, any>>({});
   const [teamFiltersState, setTeamFiltersState] = useState<Record<string, any>>({});
+  const [showPlayerPostModal, setShowPlayerPostModal] = useState(false);
+  const [showTeamPostModal, setShowTeamPostModal] = useState(false);
 
   // Filter players with active posts logic
   const filteredPlayers = mockPlayers.filter(player => {
@@ -354,10 +359,45 @@ export function DraftPage() {
             className="flex-1"
           />
           
-          <FilterPanel
-            filters={activeTab === 'players' ? playerFilters : teamFilters}
-            onFiltersChange={activeTab === 'players' ? setPlayerFiltersState : setTeamFiltersState}
-          />
+          <div className="flex gap-4">
+            <FilterPanel
+              filters={activeTab === 'players' ? playerFilters : teamFilters}
+              onFiltersChange={activeTab === 'players' ? setPlayerFiltersState : setTeamFiltersState}
+            />
+            
+            {/* Create Post Buttons */}
+            {activeTab === 'players' ? (
+              isAuthenticated ? (
+                <Button onClick={() => setShowPlayerPostModal(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Procuro Equipa
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => alert('🔐 Precisas de fazer login para criar posts!')}
+                  variant="secondary"
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  Login para Publicar
+                </Button>
+              )
+            ) : (
+              isAuthenticated ? (
+                <Button onClick={() => setShowTeamPostModal(true)}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Procuramos Jogador
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => alert('🔐 Precisas de fazer login para criar posts!')}
+                  variant="secondary"
+                >
+                  <Lock className="mr-2 h-4 w-4" />
+                  Login para Publicar
+                </Button>
+              )
+            )}
+          </div>
         </motion.div>
 
         {/* Results Counter */}
@@ -421,6 +461,85 @@ export function DraftPage() {
             )}
           </motion.div>
         )}
+
+        {/* Modals */}
+        <Modal
+          isOpen={showPlayerPostModal}
+          onClose={() => setShowPlayerPostModal(false)}
+          title="Criar Post - Procuro Equipa"
+        >
+          <PlayerPostForm 
+            onSubmit={async (data) => {
+              try {
+                const response = await fetch('/api/draft-posts', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  },
+                  body: JSON.stringify({
+                    type: 'player_looking',
+                    ...data
+                  })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                  alert('✅ Post criado com sucesso! Outros utilizadores podem agora ver o teu perfil.');
+                  setShowPlayerPostModal(false);
+                  // Refresh page to show new post
+                  window.location.reload();
+                } else {
+                  alert(`❌ Erro: ${result.error || 'Não foi possível criar o post'}`);
+                }
+              } catch (error) {
+                console.error('Erro ao criar post:', error);
+                alert('❌ Erro de conexão. Tenta novamente.');
+              }
+            }}
+            onCancel={() => setShowPlayerPostModal(false)}
+          />
+        </Modal>
+
+        <Modal
+          isOpen={showTeamPostModal}
+          onClose={() => setShowTeamPostModal(false)}
+          title="Criar Post - Procuramos Jogador"
+        >
+          <TeamPostForm 
+            onSubmit={async (data) => {
+              try {
+                const response = await fetch('/api/draft-posts', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  },
+                  body: JSON.stringify({
+                    type: 'team_looking',
+                    ...data
+                  })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                  alert('✅ Post criado com sucesso! Outros utilizadores podem agora ver que a vossa equipa está à procura.');
+                  setShowTeamPostModal(false);
+                  // Refresh page to show new post
+                  window.location.reload();
+                } else {
+                  alert(`❌ Erro: ${result.error || 'Não foi possível criar o post'}`);
+                }
+              } catch (error) {
+                console.error('Erro ao criar post:', error);
+                alert('❌ Erro de conexão. Tenta novamente.');
+              }
+            }}
+            onCancel={() => setShowTeamPostModal(false)}
+          />
+        </Modal>
       </div>
     </main>
   );
@@ -549,7 +668,322 @@ function PlayerConnectionCard({ player, index }: { player: any; index: number })
   );
 }
 
-// Team Connection Card  
+// Player Post Form
+function PlayerPostForm({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) {
+  const [formData, setFormData] = useState({
+    nickname: '',
+    role: '',
+    experience: '',
+    availability: '',
+    description: '',
+    lookingFor: '',
+    urgency: 'normal'
+  });
+
+  const roles = ['Rifler', 'AWPer', 'Entry Fragger', 'Support', 'IGL'];
+  const experiences = ['Iniciante', 'Intermédio', 'Avançado', 'Profissional'];
+  const availabilities = ['Casual', 'Competitivo', 'Semi-Pro'];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Nickname *
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.nickname}
+            onChange={(e) => setFormData({...formData, nickname: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400"
+            placeholder="Teu nickname no jogo"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Role Preferida *
+          </label>
+          <select
+            required
+            value={formData.role}
+            onChange={(e) => setFormData({...formData, role: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white"
+          >
+            <option value="">Seleciona uma role</option>
+            {roles.map(role => (
+              <option key={role} value={role} className="bg-gray-800">{role}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Experiência *
+          </label>
+          <select
+            required
+            value={formData.experience}
+            onChange={(e) => setFormData({...formData, experience: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white"
+          >
+            <option value="">Seleciona o nível</option>
+            {experiences.map(exp => (
+              <option key={exp} value={exp} className="bg-gray-800">{exp}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Disponibilidade *
+          </label>
+          <select
+            required
+            value={formData.availability}
+            onChange={(e) => setFormData({...formData, availability: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white"
+          >
+            <option value="">Como queres jogar?</option>
+            {availabilities.map(avail => (
+              <option key={avail} value={avail} className="bg-gray-800">{avail}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Tipo de Equipa que Procuras *
+        </label>
+        <input
+          type="text"
+          required
+          value={formData.lookingFor}
+          onChange={(e) => setFormData({...formData, lookingFor: e.target.value})}
+          className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400"
+          placeholder="Ex: Equipa competitiva, casual, mix..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Descrição *
+        </label>
+        <textarea
+          required
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          rows={4}
+          className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400"
+          placeholder="Fala sobre ti, teu estilo de jogo, o que procuras numa equipa..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Urgência
+        </label>
+        <div className="flex gap-4">
+          <label className="flex items-center">
+            <input
+              type="radio"
+              value="normal"
+              checked={formData.urgency === 'normal'}
+              onChange={(e) => setFormData({...formData, urgency: e.target.value})}
+              className="mr-2"
+            />
+            <span className="text-gray-300">Normal</span>
+          </label>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              value="urgent"
+              checked={formData.urgency === 'urgent'}
+              onChange={(e) => setFormData({...formData, urgency: e.target.value})}
+              className="mr-2"
+            />
+            <span className="text-orange-400">Urgente</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-4 pt-4">
+        <Button type="button" onClick={onCancel} variant="secondary">
+          Cancelar
+        </Button>
+        <Button type="submit">
+          Publicar Post
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// Team Post Form
+function TeamPostForm({ onSubmit, onCancel }: { onSubmit: (data: any) => void; onCancel: () => void }) {
+  const [formData, setFormData] = useState({
+    teamName: '',
+    lookingForRole: '',
+    experience: '',
+    commitment: '',
+    description: '',
+    requirements: '',
+    urgency: 'normal'
+  });
+
+  const roles = ['Rifler', 'AWPer', 'Entry Fragger', 'Support', 'IGL', 'Qualquer Role'];
+  const experiences = ['Iniciante', 'Intermédio', 'Avançado', 'Profissional'];
+  const commitments = ['Casual', 'Competitivo', 'Semi-Pro', 'Profissional'];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Nome da Equipa *
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.teamName}
+            onChange={(e) => setFormData({...formData, teamName: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400"
+            placeholder="Nome da vossa equipa"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Role Procurada *
+          </label>
+          <select
+            required
+            value={formData.lookingForRole}
+            onChange={(e) => setFormData({...formData, lookingForRole: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white"
+          >
+            <option value="">Que role precisam?</option>
+            {roles.map(role => (
+              <option key={role} value={role} className="bg-gray-800">{role}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Experiência Pretendida *
+          </label>
+          <select
+            required
+            value={formData.experience}
+            onChange={(e) => setFormData({...formData, experience: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white"
+          >
+            <option value="">Nível mínimo</option>
+            {experiences.map(exp => (
+              <option key={exp} value={exp} className="bg-gray-800">{exp}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Compromisso *
+          </label>
+          <select
+            required
+            value={formData.commitment}
+            onChange={(e) => setFormData({...formData, commitment: e.target.value})}
+            className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white"
+          >
+            <option value="">Tipo de compromisso</option>
+            {commitments.map(comm => (
+              <option key={comm} value={comm} className="bg-gray-800">{comm}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Descrição da Equipa *
+        </label>
+        <textarea
+          required
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
+          rows={4}
+          className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400"
+          placeholder="Descrevam a vossa equipa, estilo de jogo, objetivos..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Requisitos do Jogador
+        </label>
+        <textarea
+          value={formData.requirements}
+          onChange={(e) => setFormData({...formData, requirements: e.target.value})}
+          rows={3}
+          className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400"
+          placeholder="Requisitos específicos: horários, idade, Discord, etc..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-300 mb-2">
+          Urgência
+        </label>
+        <div className="flex gap-4">
+          <label className="flex items-center">
+            <input
+              type="radio"
+              value="normal"
+              checked={formData.urgency === 'normal'}
+              onChange={(e) => setFormData({...formData, urgency: e.target.value})}
+              className="mr-2"
+            />
+            <span className="text-gray-300">Normal</span>
+          </label>
+          <label className="flex items-center">
+            <input
+              type="radio"
+              value="urgent"
+              checked={formData.urgency === 'urgent'}
+              onChange={(e) => setFormData({...formData, urgency: e.target.value})}
+              className="mr-2"
+            />
+            <span className="text-orange-400">Urgente</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-4 pt-4">
+        <Button type="button" onClick={onCancel} variant="secondary">
+          Cancelar
+        </Button>
+        <Button type="submit">
+          Publicar Post
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// Team Connection Card
 function TeamConnectionCard({ team, index }: { team: any; index: number }) {
   const [isFavorite, setIsFavorite] = useState(false);
   

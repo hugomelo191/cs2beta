@@ -19,6 +19,7 @@ import newsRoutes from './routes/news.js';
 import casterRoutes from './routes/casters.js';
 import casterApplicationRoutes from './routes/casterApplications.js';
 import draftRoutes from './routes/draft.js';
+import draftPostRoutes from './routes/draftPosts.js';
 import gamesRoutes from './routes/games.js';
 import faceitRoutes from './routes/faceit.js';
 
@@ -121,6 +122,7 @@ app.use('/api/news', newsRoutes);
 app.use('/api/casters', casterRoutes);
 app.use('/api/caster-applications', casterApplicationRoutes);
 app.use('/api/draft', draftRoutes);
+app.use('/api/draft-posts', draftPostRoutes);
 app.use('/api/games', gamesRoutes);
 app.use('/api/faceit', faceitRoutes);
 

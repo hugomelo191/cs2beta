@@ -212,11 +212,43 @@ export const casterApplications = pgTable('caster_applications', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Draft Posts table
+export const draftPosts = pgTable('draft_posts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  authorId: uuid('author_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  type: varchar('type', { length: 20 }).notNull(), // player_looking, team_looking
+  title: varchar('title', { length: 200 }).notNull(),
+  description: text('description').notNull(),
+  
+  // Player-specific fields
+  nickname: varchar('nickname', { length: 100 }),
+  role: varchar('role', { length: 50 }),
+  experience: varchar('experience', { length: 50 }),
+  availability: varchar('availability', { length: 50 }),
+  lookingFor: varchar('looking_for', { length: 200 }),
+  
+  // Team-specific fields
+  teamName: varchar('team_name', { length: 100 }),
+  lookingForRole: varchar('looking_for_role', { length: 50 }),
+  commitment: varchar('commitment', { length: 50 }),
+  requirements: text('requirements'),
+  
+  // Common fields
+  urgency: varchar('urgency', { length: 20 }).default('normal'), // normal, urgent
+  country: varchar('country', { length: 2 }),
+  isActive: boolean('is_active').default(true),
+  views: integer('views').default(0),
+  expiresAt: timestamp('expires_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   players: many(players),
   drafts: many(drafts),
   casters: many(casters),
+  draftPosts: many(draftPosts),
 }));
 
 export const teamsRelations = relations(teams, ({ many }) => ({
@@ -270,5 +302,12 @@ export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
   player: one(players, {
     fields: [teamMembers.playerId],
     references: [players.id],
+  }),
+}));
+
+export const draftPostsRelations = relations(draftPosts, ({ one }) => ({
+  author: one(users, {
+    fields: [draftPosts.authorId],
+    references: [users.id],
   }),
 })); 
