@@ -4,10 +4,11 @@ import { FilterPanel, FilterGroup } from "@/components/ui/FilterPanel";
 import { StatsCard } from "@/components/ui/StatsCard";
 import { mockTournaments } from "@/lib/constants/mock-data";
 import { TournamentCard } from "@/components/features/tournaments/TournamentCard";
-import { PlusCircle, Trophy, Calendar, DollarSign, Users, Gamepad2, Clock } from "lucide-react";
+import { PlusCircle, Trophy, Calendar, DollarSign, Users, Gamepad2, Clock, Lock } from "lucide-react";
 import { motion } from 'framer-motion';
 import { useState, useMemo } from 'react';
 import { Modal } from "@/components/ui/modal/Modal";
+import { useAuth } from '@/contexts/AuthContext';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -63,6 +64,7 @@ const tournamentFilters: FilterGroup[] = [
 ];
 
 export function TournamentsPage() {
+  const { isAuthenticated } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, any>>({});
@@ -217,10 +219,20 @@ export function TournamentsPage() {
               onFiltersChange={setFilters}
             />
             
-            <Button onClick={handleCreateTournament}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Criar Torneio
-            </Button>
+            {isAuthenticated ? (
+              <Button onClick={handleCreateTournament}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Criar Torneio
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => alert('🔐 Precisas de fazer login para criar torneios!')}
+                variant="secondary"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Login para Criar
+              </Button>
+            )}
           </div>
         </motion.div>
 

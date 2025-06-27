@@ -4,10 +4,11 @@ import { FilterPanel, FilterGroup } from "@/components/ui/FilterPanel";
 import { StatsCard } from "@/components/ui/StatsCard";
 import { mockTeamsPage } from "@/lib/constants/mock-data";
 import { TeamCard } from "@/components/features/teams/TeamCard";
-import { PlusCircle, Users, Shield, Trophy, Globe } from "lucide-react";
+import { PlusCircle, Users, Shield, Trophy, Globe, Lock } from "lucide-react";
 import { motion } from 'framer-motion';
 import { useState, useMemo } from 'react';
 import { Modal } from "@/components/ui/modal/Modal";
+import { useAuth } from '@/contexts/AuthContext';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -64,6 +65,7 @@ const teamFilters: FilterGroup[] = [
 ];
 
 export function TeamsPage() {
+  const { isAuthenticated } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, any>>({});
@@ -194,10 +196,20 @@ export function TeamsPage() {
               onFiltersChange={setFilters}
             />
             
-            <Button onClick={handleCreateTeam}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Criar Equipa
-            </Button>
+            {isAuthenticated ? (
+              <Button onClick={handleCreateTeam}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Criar Equipa
+              </Button>
+            ) : (
+              <Button 
+                onClick={() => alert('🔐 Precisas de fazer login para criar equipas!')}
+                variant="secondary"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Login para Criar
+              </Button>
+            )}
           </div>
         </motion.div>
 
