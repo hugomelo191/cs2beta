@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { beforeAll, afterAll } from '@jest/globals';
 
 // Load test environment variables
 dotenv.config({ path: '.env.test' });

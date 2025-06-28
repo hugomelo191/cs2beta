@@ -4,9 +4,9 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: cs2hub-postgres
+    container_name: cs2beta-postgres
     environment:
-      POSTGRES_DB: cs2hub
+      POSTGRES_DB: cs2beta
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
@@ -14,27 +14,27 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - cs2hub-network
+      - cs2beta-network
 
   # Redis (for caching and sessions)
   redis:
     image: redis:7-alpine
-    container_name: cs2hub-redis
+    container_name: cs2beta-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - cs2hub-network
+      - cs2beta-network
 
   # Backend API
   api:
     build: .
-    container_name: cs2hub-api
+    container_name: cs2beta-api
     environment:
       NODE_ENV: development
       PORT: 5000
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/cs2hub
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cs2beta
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-super-secret-jwt-key-here
       JWT_EXPIRES_IN: 7d
@@ -48,26 +48,26 @@ services:
       - .:/app
       - /app/node_modules
     networks:
-      - cs2hub-network
+      - cs2beta-network
     command: npm run dev
 
   # Drizzle Studio (Database GUI)
   drizzle-studio:
     image: ghcr.io/drizzle-team/drizzle-studio:latest
-    container_name: cs2hub-drizzle-studio
+    container_name: cs2beta-drizzle-studio
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/cs2hub
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cs2beta
     ports:
       - "4983:4983"
     depends_on:
       - postgres
     networks:
-      - cs2hub-network
+      - cs2beta-network
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  cs2hub-network:
+  cs2beta-network:
     driver: bridge 
