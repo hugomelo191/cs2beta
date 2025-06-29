@@ -96,15 +96,22 @@ EOF
 mkdir -p uploads
 
 # Run database migrations if files exist
-print_status "Verificando migrações..."
+print_status "Executando migrações da base de dados..."
 if [ -f "src/db/migrations/0001_initial.sql" ]; then
-    print_status "Executando migrações..."
-    sudo -u postgres psql -d cs2hub -f src/db/migrations/0001_initial.sql || print_warning "Migração 0001 já executada"
+    print_status "Executando migração inicial..."
+    sudo -u postgres psql -d cs2hub -f src/db/migrations/0001_initial.sql || print_warning "Migração 0001 já executada ou com erro"
+else
+    print_error "Ficheiro de migração 0001_initial.sql não encontrado!"
 fi
 
 if [ -f "src/db/migrations/0002_add_faceit_fields.sql" ]; then
-    sudo -u postgres psql -d cs2hub -f src/db/migrations/0002_add_faceit_fields.sql || print_warning "Migração 0002 já executada"
+    print_status "Executando migração Faceit..."
+    sudo -u postgres psql -d cs2hub -f src/db/migrations/0002_add_faceit_fields.sql || print_warning "Migração 0002 já executada ou com erro"
 fi
+
+# Test database connection
+print_status "Testando conexão com a base de dados..."
+sudo -u postgres psql -d cs2hub -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" || print_error "Erro na conexão com a base de dados"
 
 # Start backend with PM2
 print_status "Iniciando backend com PM2..."
@@ -117,6 +124,15 @@ pm2 startup
 print_status "Configurando Frontend..."
 cd /var/www/cs2hub/frontend
 npm install
+
+# Create production environment for frontend
+print_status "Criando .env do frontend..."
+cat > .env << EOF
+VITE_API_URL=http://localhost:5000/api
+VITE_WS_URL=http://localhost:5000
+NODE_ENV=production
+EOF
+
 npm run build
 
 # Configure Nginx
@@ -198,28 +214,47 @@ sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
 sudo ufw --force enable
 
-# Install SSL with Certbot (se tiveres domínio)
-print_warning "SSL: Se tiveres domínio, executa:"
-print_warning "sudo apt install -y certbot python3-certbot-nginx"
-print_warning "sudo certbot --nginx -d teu-dominio.com"
+# Final status check
+print_status "Verificando status dos serviços..."
+echo "----------------------------------------"
+echo "🔍 Status dos serviços:"
+echo "----------------------------------------"
 
-# Final status
-print_status "Deploy Completo!"
-echo ""
-echo "🎉 CS2Hub está online!"
-echo "   🌐 Frontend: http://$(curl -s ifconfig.me)"
-echo "   📡 API: http://$(curl -s ifconfig.me)/api/health"
-echo ""
-echo "📋 Próximos passos IMPORTANTES:"
-echo "   1. 🔑 Adiciona FACEIT_API_KEY ao .env: nano /var/www/cs2hub/frontend/server/.env"
-echo "   2. 🔐 Muda JWT_SECRET no .env para algo único"
-echo "   3. 🌐 Se tiveres domínio, configura SSL"
-echo "   4. 📊 Testa: curl http://$(curl -s ifconfig.me)/api/health"
-echo ""
-echo "📁 Comandos úteis:"
-echo "   Logs backend: pm2 logs cs2hub-backend"
-echo "   Restart backend: pm2 restart cs2hub-backend"
-echo "   Logs Nginx: sudo tail -f /var/log/nginx/error.log"
-echo "   Status: pm2 status"
+# PostgreSQL
+if systemctl is-active --quiet postgresql; then
+    print_status "PostgreSQL: ATIVO"
+else
+    print_error "PostgreSQL: INATIVO"
+fi
 
-print_status "Setup completo! 🚀" 
+# Nginx
+if systemctl is-active --quiet nginx; then
+    print_status "Nginx: ATIVO"
+else
+    print_error "Nginx: INATIVO"
+fi
+
+# PM2 Backend
+if pm2 list | grep -q "cs2hub-backend.*online"; then
+    print_status "Backend (PM2): ATIVO"
+else
+    print_error "Backend (PM2): INATIVO"
+fi
+
+echo "----------------------------------------"
+print_status "Deploy concluído!"
+echo "----------------------------------------"
+
+# Get server IP
+SERVER_IP=$(curl -s ifconfig.me)
+echo -e "${GREEN}🌐 IP do servidor: ${SERVER_IP}${NC}"
+echo -e "${GREEN}🔗 Testa em: http://${SERVER_IP}${NC}"
+echo -e "${GREEN}🔗 API Health: http://${SERVER_IP}/api/health${NC}"
+
+echo ""
+echo "📋 PRÓXIMOS PASSOS:"
+echo "1. Configurar FACEIT_API_KEY no ficheiro .env"
+echo "2. Alterar JWT_SECRET no ficheiro .env" 
+echo "3. Configurar domínio (se tiveres)"
+
+print_warning "IMPORTANTE: Não te esqueças de configurar as variáveis de ambiente!" 

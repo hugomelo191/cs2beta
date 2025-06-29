@@ -322,27 +322,37 @@ export const UpdateDraftSchema = z.object({
 
 // Auth types
 export const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(1, 'Password é obrigatória'),
 });
 
 export const RegisterSchema = z.object({
   // User data
-  email: z.string().email(),
-  username: z.string().min(3).max(100),
-  password: z.string().min(6),
-  firstName: z.string().min(2).max(100),
-  lastName: z.string().min(2).max(100),
+  email: z.string().email('Email inválido'),
+  username: z.string().min(3, 'Username deve ter pelo menos 3 caracteres').max(100),
+  password: z.string().min(6, 'Password deve ter pelo menos 6 caracteres'),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
   country: z.string().length(2).default('pt'),
   
-  // Mandatory player data
-  nickname: z.string().min(2).max(50),
-  faceitNickname: z.string().min(2).max(50),
+  // Player data (obrigatório)
+  nickname: z.string().min(2, 'Nickname deve ter pelo menos 2 caracteres').max(50),
   realName: z.string().optional(),
-  age: z.number().int().min(13).max(50).optional(),
+  age: z.number().int().positive().optional(),
   position: z.enum(['IGL', 'AWP', 'Rifler', 'Support']).optional(),
-  bio: z.string().max(500).optional(),
-  socials: z.record(z.string()).optional(),
+  bio: z.string().optional(),
+  
+  // Faceit integration
+  faceitNickname: z.string().min(2, 'Nickname do Faceit é obrigatório'),
+  
+  // Socials
+  socials: z.object({
+    steam: z.string().url().optional(),
+    discord: z.string().optional(),
+    twitter: z.string().url().optional(),
+    instagram: z.string().url().optional(),
+    twitch: z.string().url().optional(),
+  }).optional(),
 });
 
 // API Response types
@@ -360,7 +370,7 @@ export const PaginatedResponseSchema = z.object({
     page: z.number(),
     limit: z.number(),
     total: z.number(),
-    totalPages: z.number(),
+    pages: z.number(),
   }),
 });
 
