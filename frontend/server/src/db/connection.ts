@@ -3,7 +3,7 @@ import postgres from 'postgres';
 import * as schema from './schema.js';
 
 // Configuração da base de dados CS2BETA
-const connectionString = process.env.DATABASE_URL || 'postgresql://cs2beta:cs2beta_2025_secure@localhost:5432/cs2beta';
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres@localhost:5432/cs2beta';
 
 // Cliente PostgreSQL
 const queryClient = postgres(connectionString, {
