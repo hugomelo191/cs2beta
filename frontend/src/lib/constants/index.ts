@@ -1,6 +1,7 @@
 // App Constants
-export const APP_NAME = 'CS2Hub'
-export const APP_DESCRIPTION = 'O hub ibérico de Counter-Strike 2 que une as comunidades competitivas de Portugal e Espanha'
+export const APP_NAME = 'CS2BETA'
+export const APP_DESCRIPTION = 'Plataforma oficial da comunidade CS2 para Portugal e Espanha'
+export const APP_VERSION = '1.0.0'
 
 // Navigation
 export const NAVIGATION_ITEMS = [
@@ -14,29 +15,46 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:50
 
 export const API_ENDPOINTS = {
   // Auth
-  AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    REFRESH: '/auth/refresh',
-    PROFILE: '/auth/profile',
-  },
-  // Casters
-  CASTERS: {
-    LIST: '/casters',
-    DETAIL: (id: string) => `/casters/${id}`,
-    CREATE: '/casters',
-    UPDATE: (id: string) => `/casters/${id}`,
-    DELETE: (id: string) => `/casters/${id}`,
-  },
+  LOGIN: '/api/auth/login',
+  REGISTER: '/api/auth/register',
+  REFRESH: '/api/auth/refresh',
+  LOGOUT: '/api/auth/logout',
+  
+  // Users
+  USERS: '/api/users',
+  USER_PROFILE: '/api/users/profile',
+  
+  // Teams
+  TEAMS: '/api/teams',
+  TEAM_DETAILS: '/api/teams/:id',
+  
+  // Players
+  PLAYERS: '/api/players',
+  PLAYER_DETAILS: '/api/players/:id',
+  
+  // Tournaments
+  TOURNAMENTS: '/api/tournaments',
+  TOURNAMENT_DETAILS: '/api/tournaments/:id',
+  
   // News
-  NEWS: {
-    LIST: '/news',
-    DETAIL: (id: string) => `/news/${id}`,
-    CREATE: '/news',
-    UPDATE: (id: string) => `/news/${id}`,
-    DELETE: (id: string) => `/news/${id}`,
-  },
+  NEWS: '/api/news',
+  NEWS_DETAILS: '/api/news/:id',
+  
+  // Casters
+  CASTERS: '/api/casters',
+  CASTER_APPLICATIONS: '/api/caster-applications',
+  
+  // Draft
+  DRAFT: '/api/draft',
+  DRAFT_POSTS: '/api/draft-posts',
+  
+  // Games
+  GAMES: '/api/games',
+  LIVE_GAMES: '/api/games/live',
+  
+  // Faceit
+  FACEIT_PLAYER: '/api/faceit/player/:id',
+  FACEIT_TEAM: '/api/faceit/team/:id'
 } as const
 
 // UI Constants
@@ -83,10 +101,11 @@ export const FEATURE_FLAGS = {
 
 // Local Storage Keys
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: 'cs2hub_auth_token',
-  USER_PREFERENCES: 'cs2hub_user_preferences',
-  THEME: 'cs2hub_theme',
-  LANGUAGE: 'cs2hub_language',
+  AUTH_TOKEN: 'cs2beta_auth_token',
+  USER_PREFERENCES: 'cs2beta_user_preferences',
+  THEME: 'cs2beta_theme',
+  LANGUAGE: 'cs2beta_language',
+  DRAFT_DATA: 'cs2beta_draft_data'
 } as const
 
 // Error Messages
@@ -105,4 +124,90 @@ export const SUCCESS_MESSAGES = {
   LOGOUT_SUCCESS: 'Logout realizado com sucesso!',
   SAVE_SUCCESS: 'Alterações guardadas com sucesso!',
   DELETE_SUCCESS: 'Item eliminado com sucesso!',
-} as const 
+} as const
+
+export const ROUTES = {
+  HOME: '/',
+  ABOUT: '/about',
+  NEWS: '/news',
+  TOURNAMENTS: '/tournaments',
+  TEAMS: '/teams',
+  PLAYERS: '/players',
+  DRAFT: '/draft',
+  CASTERS: '/casters',
+  RESULTS: '/results',
+  PROFILE: '/profile',
+  LOGIN: '/login',
+  REGISTER: '/register',
+  ADMIN: '/admin',
+  CONTACT: '/contact',
+  FAQ: '/faq',
+  TERMS: '/terms',
+  PRIVACY: '/privacy',
+  STORY: '/story',
+  VALUES: '/values',
+  TEAM: '/team',
+  LEGAL_SUPPORT: '/legal-support',
+  REPORT_PROBLEM: '/report-problem'
+} as const
+
+export const EXTERNAL_LINKS = {
+  DISCORD: 'https://discord.gg/cs2beta',
+  TWITTER: 'https://twitter.com/cs2beta',
+  STEAM: 'https://steamcommunity.com/groups/cs2beta',
+  FACEIT: 'https://www.faceit.com/en/organizers/cs2beta',
+  GITHUB: 'https://github.com/hugomelo191/cs2beta'
+} as const
+
+export const CONTACT_INFO = {
+  GENERAL: 'geral@cs2beta.pt',
+  PARTNERSHIPS: 'parcerias@cs2beta.pt',
+  LEGAL: 'legal@cs2beta.pt',
+  PRIVACY: 'privacy@cs2beta.pt',
+  SUPPORT: 'support@cs2beta.pt'
+} as const
+
+export const THEME_OPTIONS = [
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Escuro' },
+  { value: 'system', label: 'Sistema' }
+] as const
+
+export const LANGUAGE_OPTIONS = [
+  { value: 'pt', label: 'Português', flag: '🇵🇹' },
+  { value: 'es', label: 'Español', flag: '🇪🇸' }
+] as const
+
+export const USER_ROLES = {
+  USER: 'user',
+  ADMIN: 'admin',
+  MODERATOR: 'moderator',
+  CASTER: 'caster'
+} as const
+
+export const TEAM_POSITIONS = [
+  'IGL',
+  'Entry Fragger',
+  'AWPer',
+  'Support',
+  'Lurker'
+] as const
+
+export const TOURNAMENT_TYPES = [
+  'Liga',
+  'Taça',
+  'Qualificação',
+  'Amigável'
+] as const
+
+export const GAME_MAPS = [
+  'de_dust2',
+  'de_mirage',
+  'de_inferno',
+  'de_cache',
+  'de_overpass',
+  'de_train',
+  'de_nuke',
+  'de_vertigo',
+  'de_ancient'
+] as const 

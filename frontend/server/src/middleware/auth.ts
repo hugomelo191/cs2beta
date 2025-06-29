@@ -18,7 +18,11 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       token = req.headers.authorization.split(' ')[1];
 
       // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        throw new CustomError('JWT_SECRET not configured', 500);
+      }
+      const decoded = jwt.verify(token, jwtSecret) as any;
 
       // Get user from the token
       const user = await db.query.users.findFirst({
@@ -69,7 +73,12 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        console.log('JWT_SECRET not configured for optional auth');
+        return next();
+      }
+      const decoded = jwt.verify(token, jwtSecret) as any;
 
       const user = await db.query.users.findFirst({
         where: eq(users.id, decoded.id),

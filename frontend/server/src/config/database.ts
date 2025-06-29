@@ -3,22 +3,18 @@ import postgres from 'postgres';
 import * as schema from '../db/schema.js';
 
 // Configuração para desenvolvimento local
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/cs2hub';
+const connectionString = process.env.DATABASE_URL || 'postgresql://cs2beta:cs2beta_2025_secure@localhost:5432/cs2beta';
 
 // Criar cliente PostgreSQL
-const client = postgres(connectionString, {
-  max: 1,
-  idle_timeout: 20,
-  connect_timeout: 10,
-});
+const queryClient = postgres(connectionString);
 
 // Criar instância Drizzle
-export const db = drizzle(client, { schema });
+export const db = drizzle(queryClient, { schema });
 
 // Testar conexão
 export const testConnection = async () => {
   try {
-    await client`SELECT 1`;
+    await queryClient`SELECT 1`;
     console.log('✅ Conexão com PostgreSQL estabelecida');
     return true;
   } catch (error) {

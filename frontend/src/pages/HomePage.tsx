@@ -73,7 +73,7 @@ export function HomePage() {
               className="text-5xl md:text-7xl font-orbitron font-bold mb-6"
             >
               <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Bem-vindo ao CS2Hub
+                Bem-vindo ao CS2BETA
               </span>
             </motion.h1>
 
@@ -336,7 +336,7 @@ export function HomePage() {
               custom={1}
               className="text-xl text-gray-300 max-w-2xl mx-auto"
             >
-              O que o CS2Hub oferece à comunidade ibérica
+              O que o CS2BETA oferece à comunidade ibérica
             </motion.p>
           </motion.div>
 

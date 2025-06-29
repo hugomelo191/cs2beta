@@ -1,7 +1,7 @@
 {
-  "name": "cs2hub-backend",
+  "name": "cs2beta-backend",
   "version": "1.0.0",
-  "description": "Backend API for CS2Hub - Portuguese/Spanish CS2 Community Platform",
+  "description": "Backend API for CS2BETA - Portuguese/Spanish CS2 Community Platform",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {

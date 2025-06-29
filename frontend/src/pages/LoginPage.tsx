@@ -83,7 +83,7 @@ export function LoginPage() {
   };
 
   const triggerShake = () => {
-    setError('💡 Dica: Tenta fazer login com "admin@cs2hub.pt" e password "admin123" 😉');
+            setError('💡 Dica: Tenta fazer login com "admin@cs2beta.pt" e password "admin123" 😉');
   };
 
   return (

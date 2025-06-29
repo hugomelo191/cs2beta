@@ -1,63 +1,46 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema.js';
-import { createClient } from 'redis';
 
-// Create the connection
-const connectionString = process.env['DATABASE_URL'] || 'postgresql://username:password@localhost:5432/cs2hub';
+// Configuração da base de dados CS2BETA
+const connectionString = process.env.DATABASE_URL || 'postgresql://cs2beta:cs2beta_2025_secure@localhost:5432/cs2beta';
 
-const client = postgres(connectionString, {
+// Cliente PostgreSQL
+const queryClient = postgres(connectionString, {
   max: 10,
   idle_timeout: 20,
   connect_timeout: 10,
 });
 
-export const db = drizzle(client, { schema });
+// Instância Drizzle
+export const db = drizzle(queryClient, { schema });
 
-// Redis client for caching (opcional para desenvolvimento)
+// Cliente Redis (opcional - para cache)
 let redis: any = null;
-
-// Função para inicializar Redis
-async function initRedis() {
-  try {
-    if (process.env['NODE_ENV'] === 'production' || process.env['REDIS_URL']) {
-      redis = createClient({
-        url: process.env['REDIS_URL'] || 'redis://localhost:6379'
-      });
-
-      redis.on('error', (err: any) => {
-        console.log('Redis Client Error:', err.message);
-        redis = null; // Desativar Redis se houver erro
-      });
-
-      await redis.connect();
-      console.log('✅ Redis connection successful');
-    } else {
-      console.log('ℹ️ Redis disabled for development');
-    }
-  } catch (error: any) {
-    console.log('⚠️ Redis not available, continuing without cache:', error.message);
-    redis = null;
-  }
+try {
+  // Só importa Redis se estiver disponível
+  const Redis = require('ioredis');
+  redis = new Redis({
+    host: 'localhost',
+    port: 6379,
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  });
+} catch (error) {
+  console.log('Redis não disponível - usando cache em memória');
 }
-
-// Inicializar Redis
-initRedis();
 
 export { redis };
 
-// Test the connection
+// Teste de conexão
 export async function testConnection() {
   try {
-    await client`SELECT 1`;
-    console.log('✅ Database connection successful');
+    await queryClient`SELECT 1 as test`;
+    console.log('✅ Conexão PostgreSQL estabelecida');
+    return true;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
-    // Em desenvolvimento, não sair se a DB falhar
-    if (process.env['NODE_ENV'] === 'production') {
-      process.exit(1);
-    } else {
-      console.log('⚠️ Continuing without database in development mode');
-    }
+    console.error('❌ Erro na conexão PostgreSQL:', error);
+    return false;
   }
 } 

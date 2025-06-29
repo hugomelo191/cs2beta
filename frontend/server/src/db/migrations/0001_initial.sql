@@ -1,4 +1,4 @@
--- CS2Hub Database Schema
+-- CS2BETA Database Schema
 -- Initial migration with all tables
 
 -- Enable UUID extension
