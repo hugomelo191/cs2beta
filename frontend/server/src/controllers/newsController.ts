@@ -4,19 +4,20 @@ import { news } from '../db/schema.js';
 import { eq, desc, asc, like, and, or, sql } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { CreateNewsSchema, UpdateNewsSchema } from '../types/index.js';
+import { getQuery, getQueryInt, getParam, getBody } from '../utils/requestHelpers.js';
 
 // @desc    Get all news
 // @route   GET /api/news
 // @access  Public
 export const getNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string;
-    const category = req.query.category as string;
-    const author = req.query.author as string;
-    const sortBy = req.query.sortBy as string || 'publishedAt';
-    const sortOrder = req.query.sortOrder as string || 'desc';
+    const page = getQueryInt(req, 'page', 1);
+    const limit = getQueryInt(req, 'limit', 10);
+    const search = getQuery(req, 'search');
+    const category = getQuery(req, 'category');
+    const author = getQuery(req, 'author');
+    const sortBy = getQuery(req, 'sortBy') || 'publishedAt';
+    const sortOrder = getQuery(req, 'sortOrder') || 'desc';
 
     const offset = (page - 1) * limit;
 
@@ -233,7 +234,7 @@ export const deleteNews = async (req: Request, res: Response, next: NextFunction
 // @access  Public
 export const getFeaturedNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 6;
+    const limit = getQueryInt(req, 'limit', 6);
 
     const featuredNews = await db.query.news.findMany({
       where: and(

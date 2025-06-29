@@ -4,19 +4,20 @@ import { drafts, draftApplications, users, teams } from '../db/schema.js';
 import { eq, desc, asc, like, and, or, sql } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { CreateDraftSchema, UpdateDraftSchema } from '../types/index.js';
+import { getQuery, getQueryInt, getParam, getBody } from '../utils/requestHelpers.js';
 
 // @desc    Get all drafts
 // @route   GET /api/draft
 // @access  Public
 export const getDrafts = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string;
-    const status = req.query.status as string;
-    const country = req.query.country as string;
-    const sortBy = req.query.sortBy as string || 'createdAt';
-    const sortOrder = req.query.sortOrder as string || 'desc';
+    const page = getQueryInt(req, 'page', 1);
+    const limit = getQueryInt(req, 'limit', 10);
+    const search = getQuery(req, 'search');
+    const status = getQuery(req, 'status');
+    const country = getQuery(req, 'country');
+    const sortBy = getQuery(req, 'sortBy') || 'createdAt';
+    const sortOrder = getQuery(req, 'sortOrder') || 'desc';
 
     const offset = (page - 1) * limit;
 

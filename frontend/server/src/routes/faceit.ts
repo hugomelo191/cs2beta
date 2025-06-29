@@ -24,7 +24,7 @@ router.get('/test/:nickname', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Faceit data retrieved successfully',
       data: {
@@ -48,7 +48,7 @@ router.get('/test/:nickname', async (req, res) => {
   } catch (error: any) {
     console.error('❌ Faceit API test error:', error.message);
     
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message || 'Error testing Faceit API',
       data: null

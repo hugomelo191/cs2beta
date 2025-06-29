@@ -7,10 +7,15 @@ import { eq } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { LoginSchema, RegisterSchema } from '../types/index.js';
 import { faceitService } from '../services/faceitService.js';
+import { getBody } from '../utils/requestHelpers.js';
 
 // Generate JWT Token
 const generateToken = (id: string) => {
-  return jwt.sign({ id }, process.env['JWT_SECRET']!, {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET not configured');
+  }
+  return jwt.sign({ id }, jwtSecret, {
     expiresIn: process.env['JWT_EXPIRES_IN'] || '7d',
   });
 };
@@ -191,7 +196,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 export const getMe = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = await db.query.users.findFirst({
-      where: eq(users.id, (req as any).user.id),
+      where: eq(users.id, req.user!.id),
       with: {
         players: {
           with: {
@@ -208,14 +213,10 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
     // Remove password from response
     const { password, ...userWithoutPassword } = user;
 
-    // Get the main player profile (should be only one per user)
-    const playerProfile = user.players?.[0] || null;
-
     res.json({
       success: true,
       data: {
         user: userWithoutPassword,
-        player: playerProfile,
       },
     });
   } catch (error) {
@@ -223,12 +224,11 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
-// @desc    Update user profile
+// @desc    Update user profile (basic info only)
 // @route   PUT /api/auth/profile
 // @access  Private
 export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user.id;
     const { firstName, lastName, avatar, bio, country } = req.body;
 
     // Update user
@@ -241,12 +241,8 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
         country,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId))
+      .where(eq(users.id, req.user!.id))
       .returning();
-
-    if (!updatedUser) {
-      throw new CustomError('User not found', 404);
-    }
 
     // Remove password from response
     const { password, ...userWithoutPassword } = updatedUser;
@@ -254,7 +250,9 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
     res.json({
       success: true,
       message: 'Profile updated successfully',
-      data: userWithoutPassword,
+      data: {
+        user: userWithoutPassword,
+      },
     });
   } catch (error) {
     next(error);
@@ -262,20 +260,15 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
 };
 
 // @desc    Change password
-// @route   PUT /api/auth/change-password
+// @route   PUT /api/auth/password
 // @access  Private
 export const changePassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user.id;
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      throw new CustomError('Please provide current and new password', 400);
-    }
-
-    // Get user
+    // Get current user
     const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
+      where: eq(users.id, req.user!.id),
     });
 
     if (!user) {
@@ -299,7 +292,7 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
         password: hashedPassword,
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, req.user!.id));
 
     res.json({
       success: true,
@@ -310,7 +303,7 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-// @desc    Logout user
+// @desc    Logout user (client-side token removal)
 // @route   POST /api/auth/logout
 // @access  Private
 export const logout = async (req: Request, res: Response, next: NextFunction) => {

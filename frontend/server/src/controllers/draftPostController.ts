@@ -9,6 +9,7 @@ interface AuthRequest extends Request {
     email: string;
     username: string;
     role: string;
+    isActive: boolean;
   };
 }
 
@@ -75,13 +76,13 @@ export const createDraftPost = async (req: AuthRequest, res: Response) => {
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 dias
     }).returning();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: newPost[0]
     });
   } catch (error) {
     console.error('Erro ao criar draft post:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: 'Erro interno do servidor ao criar post' 
     });
   }
@@ -167,13 +168,13 @@ export const getDraftPost = async (req: Request, res: Response) => {
       .set({ views: (currentPost.views || 0) + 1 })
       .where(eq(draftPosts.id, id));
 
-    res.json({
+    return res.json({
       success: true,
       data: { ...currentPost, views: (currentPost.views || 0) + 1 }
     });
   } catch (error) {
     console.error('Erro ao obter draft post:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: 'Erro interno do servidor ao obter post' 
     });
   }
@@ -205,6 +206,10 @@ export const deleteDraftPost = async (req: AuthRequest, res: Response) => {
 
     // Verificar se o user é o autor
     const currentPost = post[0];
+    if (!currentPost) {
+      return res.status(404).json({ error: 'Post não encontrado' });
+    }
+    
     if (currentPost.authorId !== userId) {
       return res.status(403).json({ 
         error: 'Não tem permissão para eliminar este post' 
@@ -219,13 +224,13 @@ export const deleteDraftPost = async (req: AuthRequest, res: Response) => {
       })
       .where(eq(draftPosts.id, id));
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Post eliminado com sucesso'
     });
   } catch (error) {
     console.error('Erro ao eliminar draft post:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: 'Erro interno do servidor ao eliminar post' 
     });
   }

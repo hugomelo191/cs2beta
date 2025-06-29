@@ -4,29 +4,36 @@ import { tournaments, teams, tournamentParticipants } from '../db/schema.js';
 import { eq, desc, asc, like, and, or, sql, gte, lte } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { CreateTournamentSchema, UpdateTournamentSchema } from '../types/index.js';
+import { getParam, getQuery, getQueryInt, getBody } from '../utils/requestHelpers.js';
 
-// @desc    Get all tournaments
+// @desc    Get all tournaments with filtering and pagination
 // @route   GET /api/tournaments
 // @access  Public
 export const getTournaments = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string;
-    const status = req.query.status as string;
-    const country = req.query.country as string;
-    const sortBy = req.query.sortBy as string || 'startDate';
-    const sortOrder = req.query.sortOrder as string || 'asc';
+    const page = getQueryInt(req, 'page', 1);
+    const limit = getQueryInt(req, 'limit', 6);
+    const search = getQuery(req, 'search');
+    const status = getQuery(req, 'status');
+    const country = getQuery(req, 'country');
+    const sortBy = getQuery(req, 'sortBy') || 'startDate';
+    const sortOrder = getQuery(req, 'sortOrder') || 'asc';
 
     const offset = (page - 1) * limit;
 
     // Build where conditions
-    const whereConditions = [];
-    
+    let whereConditions: any[] = [];
+
     if (search) {
-      whereConditions.push(like(tournaments.name, `%${search}%`));
+      whereConditions.push(
+        or(
+          like(tournaments.name, `%${search}%`),
+          like(tournaments.description, `%${search}%`),
+          like(tournaments.organizer, `%${search}%`)
+        )
+      );
     }
-    
+
     if (status) {
       whereConditions.push(eq(tournaments.status, status));
     }
@@ -35,30 +42,47 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
       whereConditions.push(eq(tournaments.country, country));
     }
 
-    // Get tournaments with pagination
-    const tournamentsList = await db.query.tournaments.findMany({
+    // Get valid sort columns
+    const validSortColumns = ['startDate', 'endDate', 'name', 'prizePool', 'createdAt'];
+    const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'startDate';
+
+    const allTournaments = await db.query.tournaments.findMany({
       where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      orderBy: sortOrder === 'desc' ? desc(tournaments[sortBy as keyof typeof tournaments]) : asc(tournaments[sortBy as keyof typeof tournaments]),
-      limit,
       offset,
+      limit,
+      orderBy: sortOrder === 'desc' ? desc(tournaments[sortColumn as keyof typeof tournaments] as any) : asc(tournaments[sortColumn as keyof typeof tournaments] as any),
+      with: {
+        participants: {
+          with: {
+            team: {
+              columns: {
+                id: true,
+                name: true,
+                logo: true,
+              },
+            },
+          },
+        },
+      },
     });
 
-    // Get total count
-    const totalCount = await db.select({ count: tournaments.id })
-      .from(tournaments)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+    // Count total tournaments
+    const totalTournaments = await db.query.tournaments.findMany({
+      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+    });
 
-    const total = totalCount.length;
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(totalTournaments.length / limit);
 
     res.json({
       success: true,
-      data: tournamentsList,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
+      data: {
+        tournaments: allTournaments,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalTournaments.length,
+          itemsPerPage: limit,
+        },
       },
     });
   } catch (error) {
@@ -66,43 +90,32 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-// @desc    Get single tournament
+// @desc    Get single tournament by ID
 // @route   GET /api/tournaments/:id
 // @access  Public
 export const getTournament = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     const tournament = await db.query.tournaments.findFirst({
       where: eq(tournaments.id, id),
+      with: {
+        participants: {
+          with: {
+            team: true,
+          },
+        },
+      },
     });
 
     if (!tournament) {
       throw new CustomError('Tournament not found', 404);
     }
 
-    // Get tournament participants
-    const participants = await db.query.tournamentParticipants.findMany({
-      where: eq(tournamentParticipants.tournamentId, id),
-      with: {
-        team: {
-          columns: {
-            id: true,
-            name: true,
-            tag: true,
-            logo: true,
-            country: true,
-          }
-        }
-      },
-      orderBy: asc(tournamentParticipants.seed),
-    });
-
     res.json({
       success: true,
       data: {
-        ...tournament,
-        participants,
+        tournament,
       },
     });
   } catch (error) {
@@ -112,23 +125,38 @@ export const getTournament = async (req: Request, res: Response, next: NextFunct
 
 // @desc    Create new tournament
 // @route   POST /api/tournaments
-// @access  Private
+// @access  Private (Admin)
 export const createTournament = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Validate input
-    const validatedData = CreateTournamentSchema.parse(req.body);
+    const validatedData = CreateTournamentSchema.parse(getBody(req));
 
-    // Create tournament
     const [newTournament] = await db.insert(tournaments).values({
-      ...validatedData,
-      maps: validatedData.maps || [],
+      name: validatedData.name,
+      description: validatedData.description || null,
+      organizer: validatedData.organizer,
+      startDate: validatedData.startDate,
+      endDate: validatedData.endDate,
+      registrationDeadline: validatedData.registrationDeadline || null,
+      maxTeams: validatedData.maxTeams || null,
       currentTeams: 0,
+      format: validatedData.format,
+      rules: validatedData.rules || null,
+      prizePool: validatedData.prizePool?.toString() || null,
+      currency: validatedData.currency,
+      status: validatedData.status || 'upcoming',
+      country: validatedData.country || null,
+      logo: validatedData.logo || null,
+      banner: validatedData.banner || null,
+      isFeatured: validatedData.isFeatured || false,
     }).returning();
 
     res.status(201).json({
       success: true,
       message: 'Tournament created successfully',
-      data: newTournament,
+      data: {
+        tournament: newTournament,
+      },
     });
   } catch (error) {
     next(error);
@@ -137,13 +165,13 @@ export const createTournament = async (req: Request, res: Response, next: NextFu
 
 // @desc    Update tournament
 // @route   PUT /api/tournaments/:id
-// @access  Private
+// @access  Private (Admin)
 export const updateTournament = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    
+    const id = getParam(req, 'id');
+
     // Validate input
-    const validatedData = UpdateTournamentSchema.parse(req.body);
+    const validatedData = UpdateTournamentSchema.parse(getBody(req));
 
     // Check if tournament exists
     const existingTournament = await db.query.tournaments.findFirst({
@@ -157,7 +185,22 @@ export const updateTournament = async (req: Request, res: Response, next: NextFu
     // Update tournament
     const [updatedTournament] = await db.update(tournaments)
       .set({
-        ...validatedData,
+        name: validatedData.name || existingTournament.name,
+        description: validatedData.description || existingTournament.description,
+        organizer: validatedData.organizer || existingTournament.organizer,
+        startDate: validatedData.startDate || existingTournament.startDate,
+        endDate: validatedData.endDate || existingTournament.endDate,
+        registrationDeadline: validatedData.registrationDeadline || existingTournament.registrationDeadline,
+        maxTeams: validatedData.maxTeams || existingTournament.maxTeams,
+        format: validatedData.format || existingTournament.format,
+        rules: validatedData.rules || existingTournament.rules,
+        prizePool: validatedData.prizePool?.toString() || existingTournament.prizePool,
+        currency: validatedData.currency || existingTournament.currency,
+        status: validatedData.status || existingTournament.status,
+        country: validatedData.country || existingTournament.country,
+        logo: validatedData.logo || existingTournament.logo,
+        banner: validatedData.banner || existingTournament.banner,
+        isFeatured: validatedData.isFeatured ?? existingTournament.isFeatured,
         updatedAt: new Date(),
       })
       .where(eq(tournaments.id, id))
@@ -166,7 +209,9 @@ export const updateTournament = async (req: Request, res: Response, next: NextFu
     res.json({
       success: true,
       message: 'Tournament updated successfully',
-      data: updatedTournament,
+      data: {
+        tournament: updatedTournament,
+      },
     });
   } catch (error) {
     next(error);
@@ -175,10 +220,10 @@ export const updateTournament = async (req: Request, res: Response, next: NextFu
 
 // @desc    Delete tournament
 // @route   DELETE /api/tournaments/:id
-// @access  Private
+// @access  Private (Admin)
 export const deleteTournament = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     // Check if tournament exists
     const existingTournament = await db.query.tournaments.findFirst({
@@ -189,14 +234,8 @@ export const deleteTournament = async (req: Request, res: Response, next: NextFu
       throw new CustomError('Tournament not found', 404);
     }
 
-    // Check if tournament has participants
-    const participants = await db.query.tournamentParticipants.findMany({
-      where: eq(tournamentParticipants.tournamentId, id),
-    });
-
-    if (participants.length > 0) {
-      throw new CustomError('Cannot delete tournament with participants', 400);
-    }
+    // Delete participants first
+    await db.delete(tournamentParticipants).where(eq(tournamentParticipants.tournamentId, id));
 
     // Delete tournament
     await db.delete(tournaments).where(eq(tournaments.id, id));
@@ -215,23 +254,32 @@ export const deleteTournament = async (req: Request, res: Response, next: NextFu
 // @access  Public
 export const getFeaturedTournaments = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 6;
+    const limit = getQueryInt(req, 'limit', 6);
 
     const featuredTournaments = await db.query.tournaments.findMany({
-      where: and(
-        eq(tournaments.isFeatured, true),
-        or(
-          eq(tournaments.status, 'upcoming'),
-          eq(tournaments.status, 'ongoing')
-        )
-      ),
-      orderBy: asc(tournaments.startDate),
+      where: eq(tournaments.isFeatured, true),
       limit,
+      orderBy: desc(tournaments.startDate),
+      with: {
+        participants: {
+          with: {
+            team: {
+              columns: {
+                id: true,
+                name: true,
+                logo: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     res.json({
       success: true,
-      data: featuredTournaments,
+      data: {
+        tournaments: featuredTournaments,
+      },
     });
   } catch (error) {
     next(error);
@@ -243,20 +291,22 @@ export const getFeaturedTournaments = async (req: Request, res: Response, next: 
 // @access  Public
 export const getUpcomingTournaments = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = getQueryInt(req, 'limit', 10);
 
     const upcomingTournaments = await db.query.tournaments.findMany({
       where: and(
         eq(tournaments.status, 'upcoming'),
         gte(tournaments.startDate, new Date())
       ),
-      orderBy: asc(tournaments.startDate),
       limit,
+      orderBy: asc(tournaments.startDate),
     });
 
     res.json({
       success: true,
-      data: upcomingTournaments,
+      data: {
+        tournaments: upcomingTournaments,
+      },
     });
   } catch (error) {
     next(error);
@@ -268,17 +318,19 @@ export const getUpcomingTournaments = async (req: Request, res: Response, next: 
 // @access  Public
 export const getOngoingTournaments = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = getQueryInt(req, 'limit', 10);
 
     const ongoingTournaments = await db.query.tournaments.findMany({
       where: eq(tournaments.status, 'ongoing'),
-      orderBy: desc(tournaments.startDate),
       limit,
+      orderBy: asc(tournaments.startDate),
     });
 
     res.json({
       success: true,
-      data: ongoingTournaments,
+      data: {
+        tournaments: ongoingTournaments,
+      },
     });
   } catch (error) {
     next(error);
@@ -290,8 +342,12 @@ export const getOngoingTournaments = async (req: Request, res: Response, next: N
 // @access  Private
 export const registerTeamForTournament = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id: tournamentId } = req.params;
-    const { teamId } = req.body;
+    const tournamentId = getParam(req, 'id');
+    const { teamId }: { teamId: string } = getBody(req);
+
+    if (!teamId) {
+      throw new CustomError('Team ID is required', 400);
+    }
 
     // Check if tournament exists
     const tournament = await db.query.tournaments.findFirst({
@@ -313,49 +369,40 @@ export const registerTeamForTournament = async (req: Request, res: Response, nex
     }
 
     // Check if tournament is full
-    if (tournament.maxTeams && tournament.currentTeams >= tournament.maxTeams) {
+    if (tournament.maxTeams && (tournament.currentTeams || 0) >= tournament.maxTeams) {
       throw new CustomError('Tournament is full', 400);
     }
 
-    // Check if team exists
-    const team = await db.query.teams.findFirst({
-      where: eq(teams.id, teamId),
-    });
-
-    if (!team) {
-      throw new CustomError('Team not found', 404);
-    }
-
     // Check if team is already registered
-    const existingRegistration = await db.query.tournamentParticipants.findFirst({
+    const existingParticipant = await db.query.tournamentParticipants.findFirst({
       where: and(
         eq(tournamentParticipants.tournamentId, tournamentId),
         eq(tournamentParticipants.teamId, teamId)
       ),
     });
 
-    if (existingRegistration) {
+    if (existingParticipant) {
       throw new CustomError('Team is already registered for this tournament', 400);
     }
 
-    // Register team
+    // Add team to tournament
     await db.insert(tournamentParticipants).values({
-      tournamentId,
-      teamId,
+      tournamentId: tournamentId,
+      teamId: teamId,
       status: 'registered',
     });
 
-    // Update tournament current teams count
+    // Update current teams count
     await db.update(tournaments)
       .set({
-        currentTeams: tournament.currentTeams + 1,
+        currentTeams: (tournament.currentTeams || 0) + 1,
         updatedAt: new Date(),
       })
       .where(eq(tournaments.id, tournamentId));
 
-    res.json({
+    res.status(201).json({
       success: true,
-      message: 'Team registered successfully for tournament',
+      message: 'Successfully registered for tournament',
     });
   } catch (error) {
     next(error);
@@ -367,62 +414,59 @@ export const registerTeamForTournament = async (req: Request, res: Response, nex
 // @access  Public
 export const getTournamentParticipants = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id: tournamentId } = req.params;
+    const id = getParam(req, 'id');
 
     const participants = await db.query.tournamentParticipants.findMany({
-      where: eq(tournamentParticipants.tournamentId, tournamentId),
+      where: eq(tournamentParticipants.tournamentId, id),
       with: {
-        team: {
-          columns: {
-            id: true,
-            name: true,
-            tag: true,
-            logo: true,
-            country: true,
-          }
-        }
+        team: true,
       },
-      orderBy: asc(tournamentParticipants.seed),
     });
 
     res.json({
       success: true,
-      data: participants,
+      data: {
+        participants,
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Update tournament participant status
+// @desc    Update participant status
 // @route   PUT /api/tournaments/:id/participants/:participantId
-// @access  Private
+// @access  Private (Admin)
 export const updateParticipantStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id: tournamentId, participantId } = req.params;
-    const { status, seed, finalPosition } = req.body;
-
-    // Check if participant exists
-    const participant = await db.query.tournamentParticipants.findFirst({
-      where: eq(tournamentParticipants.id, participantId),
-    });
-
-    if (!participant) {
-      throw new CustomError('Participant not found', 404);
-    }
+    const tournamentId = getParam(req, 'id');
+    const participantId = getParam(req, 'participantId');
+    const { status, seed, finalPosition }: { 
+      status?: string; 
+      seed?: number; 
+      finalPosition?: number; 
+    } = getBody(req);
 
     // Update participant
-    await db.update(tournamentParticipants)
+    const [updatedParticipant] = await db.update(tournamentParticipants)
       .set({
-        status,
-        seed,
-        finalPosition,
+        status: status || null,
+        seed: seed || null,
+        finalPosition: finalPosition || null,
       })
-      .where(eq(tournamentParticipants.id, participantId));
+      .where(eq(tournamentParticipants.id, participantId))
+      .returning();
+
+    if (!updatedParticipant) {
+      throw new CustomError('Participant not found', 404);
+    }
 
     res.json({
       success: true,
       message: 'Participant status updated successfully',
+      data: {
+        participant: updatedParticipant,
+      },
     });
   } catch (error) {
     next(error);
@@ -434,18 +478,21 @@ export const updateParticipantStatus = async (req: Request, res: Response, next:
 // @access  Public
 export const getTournamentsByStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { status } = req.params;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const status = getParam(req, 'status');
+    const limit = getQueryInt(req, 'limit', 10);
 
     const tournamentsByStatus = await db.query.tournaments.findMany({
       where: eq(tournaments.status, status),
-      orderBy: status === 'upcoming' ? asc(tournaments.startDate) : desc(tournaments.startDate),
       limit,
+      orderBy: asc(tournaments.startDate),
     });
 
     res.json({
       success: true,
-      data: tournamentsByStatus,
+      data: {
+        tournaments: tournamentsByStatus,
+        total: tournamentsByStatus.length,
+      },
     });
   } catch (error) {
     next(error);

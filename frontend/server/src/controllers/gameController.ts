@@ -22,6 +22,14 @@ export const gameController = {
   async getTeamStats(req: Request, res: Response) {
     try {
       const { teamId } = req.params;
+      
+      if (!teamId) {
+        return res.status(400).json({
+          success: false,
+          message: 'TeamID é obrigatório'
+        });
+      }
+
       const stats = await gameDataService.getTeamStats(teamId);
       
       if (!stats) {
@@ -31,12 +39,12 @@ export const gameController = {
         });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: stats
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erro ao buscar estatísticas'
       });
@@ -49,14 +57,21 @@ export const gameController = {
       const { gameId } = req.params;
       const { score1, score2 } = req.body;
 
+      if (!gameId) {
+        return res.status(400).json({
+          success: false,
+          message: 'GameID é obrigatório'
+        });
+      }
+
       await gameDataService.updateGameScore(gameId, score1, score2);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Score atualizado com sucesso'
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erro ao atualizar score'
       });
@@ -67,6 +82,14 @@ export const gameController = {
   async getSteamPlayerStats(req: Request, res: Response) {
     try {
       const { steamId } = req.params;
+      
+      if (!steamId) {
+        return res.status(400).json({
+          success: false,
+          message: 'SteamID é obrigatório'
+        });
+      }
+
       const stats = await gameDataService.getSteamPlayerStats(steamId);
 
       if (!stats) {
@@ -76,12 +99,12 @@ export const gameController = {
         });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: stats
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erro ao buscar dados Steam'
       });
@@ -92,6 +115,14 @@ export const gameController = {
   async getFaceitPlayerStats(req: Request, res: Response) {
     try {
       const { faceitId } = req.params;
+      
+      if (!faceitId) {
+        return res.status(400).json({
+          success: false,
+          message: 'FaceitID é obrigatório'
+        });
+      }
+
       const stats = await gameDataService.getFaceitPlayerStats(faceitId);
 
       if (!stats) {
@@ -101,12 +132,12 @@ export const gameController = {
         });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: stats
       });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erro ao buscar dados Faceit'
       });

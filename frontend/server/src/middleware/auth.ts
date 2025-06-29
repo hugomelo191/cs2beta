@@ -5,24 +5,29 @@ import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { CustomError } from './errorHandler.js';
 
-export interface AuthRequest extends Request {
-  user?: any;
-}
+export const protect = async (req: Request, res: Response, next: NextFunction) => {
+  let token: string | undefined;
 
-export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  let token;
-
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  if (req.headers?.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       // Get token from header
       token = req.headers.authorization.split(' ')[1];
+
+      if (!token) {
+        throw new CustomError('No token provided', 401);
+      }
 
       // Verify token
       const jwtSecret = process.env.JWT_SECRET;
       if (!jwtSecret) {
         throw new CustomError('JWT_SECRET not configured', 500);
       }
-      const decoded = jwt.verify(token, jwtSecret) as any;
+
+      const decoded = jwt.verify(token, jwtSecret) as jwt.JwtPayload & { id: string };
+
+      if (!decoded.id) {
+        throw new CustomError('Invalid token payload', 401);
+      }
 
       // Get user from the token
       const user = await db.query.users.findFirst({
@@ -37,21 +42,25 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
         throw new CustomError('User account is deactivated', 401);
       }
 
-      req.user = user;
+      req.user = {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role || 'user',
+        isActive: user.isActive
+      };
       next();
     } catch (error) {
       console.error('Auth error:', error);
       throw new CustomError('Not authorized to access this route', 401);
     }
-  }
-
-  if (!token) {
+  } else {
     throw new CustomError('Not authorized to access this route', 401);
   }
 };
 
 export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       throw new CustomError('Not authorized to access this route', 401);
     }
@@ -67,25 +76,41 @@ export const authorize = (...roles: string[]) => {
   };
 };
 
-export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  let token;
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+  let token: string | undefined;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  if (req.headers?.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
+      
+      if (!token) {
+        return next();
+      }
+
       const jwtSecret = process.env.JWT_SECRET;
       if (!jwtSecret) {
         console.log('JWT_SECRET not configured for optional auth');
         return next();
       }
-      const decoded = jwt.verify(token, jwtSecret) as any;
+
+      const decoded = jwt.verify(token, jwtSecret) as jwt.JwtPayload & { id: string };
+
+      if (!decoded.id) {
+        return next();
+      }
 
       const user = await db.query.users.findFirst({
         where: eq(users.id, decoded.id),
       });
 
       if (user && user.isActive) {
-        req.user = user;
+        req.user = {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          role: user.role || 'user',
+          isActive: user.isActive
+        };
       }
     } catch (error) {
       // Token is invalid, but we don't throw an error for optional auth

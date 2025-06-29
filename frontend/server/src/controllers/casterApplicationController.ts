@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
-import { db } from '../config/database.js';
+import { Request, Response, NextFunction } from 'express';
+import { db } from '../db/connection.js';
 import { casterApplications } from '../db/schema.js';
 import { eq, desc } from 'drizzle-orm';
+import { getQuery, getQueryInt, getParam, getBody } from '../utils/requestHelpers.js';
 
 // Criar candidatura
 export const createApplication = async (req: Request, res: Response) => {
@@ -63,25 +64,28 @@ export const createApplication = async (req: Request, res: Response) => {
 // Listar todas as candidaturas (Admin)
 export const getApplications = async (req: Request, res: Response) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const status = getQuery(req, 'status');
+    const page = getQueryInt(req, 'page', 1);
+    const limit = getQueryInt(req, 'limit', 10);
     
-    let applicationsQuery = db.select().from(casterApplications);
-    
-    if (status && typeof status === 'string') {
-      applicationsQuery = applicationsQuery.where(eq(casterApplications.status, status));
+    const whereConditions = [];
+    if (status) {
+      whereConditions.push(eq(casterApplications.status, status));
     }
-    
-    const applications = await applicationsQuery
-      .orderBy(desc(casterApplications.createdAt))
-      .limit(Number(limit))
-      .offset((Number(page) - 1) * Number(limit));
+
+    const applications = await db.query.casterApplications.findMany({
+      where: whereConditions.length > 0 ? whereConditions[0] : undefined,
+      orderBy: desc(casterApplications.createdAt),
+      limit,
+      offset: (page - 1) * limit,
+    });
 
     res.json({
       success: true,
       data: applications,
       pagination: {
-        page: Number(page),
-        limit: Number(limit)
+        page,
+        limit
       }
     });
   } catch (error) {
@@ -96,7 +100,7 @@ export const getApplications = async (req: Request, res: Response) => {
 // Obter candidatura específica
 export const getApplication = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
     
     if (!id) {
       return res.status(400).json({
@@ -105,10 +109,9 @@ export const getApplication = async (req: Request, res: Response) => {
       });
     }
     
-    const [application] = await db
-      .select()
-      .from(casterApplications)
-      .where(eq(casterApplications.id, id));
+    const application = await db.query.casterApplications.findFirst({
+      where: eq(casterApplications.id, id)
+    });
 
     if (!application) {
       return res.status(404).json({
@@ -133,8 +136,9 @@ export const getApplication = async (req: Request, res: Response) => {
 // Revisar candidatura (Aprovar/Rejeitar)
 export const reviewApplication = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { status, reviewNotes } = req.body;
+    const id = getParam(req, 'id');
+    const body = getBody(req) as { status: string; reviewNotes?: string };
+    const { status, reviewNotes } = body;
     // const reviewerId = req.user?.id; // TODO: Implementar quando auth middleware estiver pronto
 
     if (!id) {
@@ -151,15 +155,19 @@ export const reviewApplication = async (req: Request, res: Response) => {
       });
     }
 
+    const updateData: any = {
+      status,
+      reviewedAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    if (reviewNotes !== undefined) {
+      updateData.reviewNotes = reviewNotes;
+    }
+
     const [updatedApplication] = await db
       .update(casterApplications)
-      .set({
-        status,
-        reviewNotes,
-        // reviewedBy: reviewerId, // TODO: Adicionar quando auth middleware estiver pronto
-        reviewedAt: new Date(),
-        updatedAt: new Date()
-      })
+      .set(updateData)
       .where(eq(casterApplications.id, id))
       .returning();
 

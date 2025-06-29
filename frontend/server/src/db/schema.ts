@@ -5,18 +5,21 @@ import { relations } from 'drizzle-orm';
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  username: varchar('username', { length: 100 }).notNull().unique(),
+  username: varchar('username', { length: 50 }).notNull().unique(),
   password: varchar('password', { length: 255 }).notNull(),
   firstName: varchar('first_name', { length: 100 }),
   lastName: varchar('last_name', { length: 100 }),
   avatar: text('avatar'),
   bio: text('bio'),
-  country: varchar('country', { length: 2 }).default('pt'),
-  role: varchar('role', { length: 20 }).default('user'), // user, admin, moderator
-  isVerified: boolean('is_verified').default(false),
-  isActive: boolean('is_active').default(true),
+  country: varchar('country', { length: 2 }),
+  role: varchar('role', { length: 20 }).default('user').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  isVerified: boolean('is_verified').default(false).notNull(),
+  verificationToken: varchar('verification_token', { length: 255 }),
+  resetPasswordToken: varchar('reset_password_token', { length: 255 }),
+  resetPasswordExpires: timestamp('reset_password_expires'),
   lastLogin: timestamp('last_login'),
-  createdAt: timestamp('created_at').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 

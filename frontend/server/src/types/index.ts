@@ -28,11 +28,14 @@ export const CreateUserSchema = z.object({
 });
 
 export const UpdateUserSchema = z.object({
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  avatar: z.string().url().optional(),
-  bio: z.string().optional(),
-  country: z.string().length(2).optional(),
+  firstName: z.string().min(1, 'First name is required').optional(),
+  lastName: z.string().min(1, 'Last name is required').optional(),
+  email: z.string().email('Invalid email format').optional(),
+  username: z.string().min(3, 'Username must be at least 3 characters').optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  avatar: z.string().url('Invalid avatar URL').optional(),
+  bio: z.string().max(500, 'Bio must not exceed 500 characters').optional(),
+  country: z.string().length(2, 'Country must be a 2-letter code').optional(),
 });
 
 // Team types
@@ -151,38 +154,40 @@ export const TournamentSchema = z.object({
 });
 
 export const CreateTournamentSchema = z.object({
-  name: z.string().min(2).max(200),
+  name: z.string().min(1, 'Tournament name is required'),
   description: z.string().optional(),
-  organizer: z.string().min(2).max(100),
-  prizePool: z.number().positive().optional(),
-  currency: z.string().length(3).default('EUR'),
+  organizer: z.string().min(1, 'Organizer is required'),
   startDate: z.date(),
   endDate: z.date(),
   registrationDeadline: z.date().optional(),
-  maxTeams: z.number().int().positive().optional(),
-  format: z.string().optional(),
-  maps: z.array(z.string()).optional(),
+  maxTeams: z.number().positive().optional(),
+  format: z.string().min(1, 'Format is required'),
   rules: z.string().optional(),
-  country: z.string().length(2).optional(),
+  prizePool: z.number().positive().optional(),
+  currency: z.string().min(1, 'Currency is required'),
+  status: z.enum(['upcoming', 'ongoing', 'completed', 'cancelled']).default('upcoming'),
+  country: z.string().length(2, 'Country must be a 2-letter code').optional(),
+  logo: z.string().url('Invalid logo URL').optional(),
+  banner: z.string().url('Invalid banner URL').optional(),
+  isFeatured: z.boolean().default(false),
 });
 
 export const UpdateTournamentSchema = z.object({
-  name: z.string().min(2).max(200).optional(),
+  name: z.string().min(1, 'Tournament name is required').optional(),
   description: z.string().optional(),
-  logo: z.string().url().optional(),
-  banner: z.string().url().optional(),
-  organizer: z.string().min(2).max(100).optional(),
-  prizePool: z.number().positive().optional(),
-  currency: z.string().length(3).optional(),
+  organizer: z.string().min(1, 'Organizer is required').optional(),
   startDate: z.date().optional(),
   endDate: z.date().optional(),
   registrationDeadline: z.date().optional(),
-  maxTeams: z.number().int().positive().optional(),
-  format: z.string().optional(),
-  maps: z.array(z.string()).optional(),
+  maxTeams: z.number().positive().optional(),
+  format: z.string().min(1, 'Format is required').optional(),
   rules: z.string().optional(),
+  prizePool: z.number().positive().optional(),
+  currency: z.string().min(1, 'Currency is required').optional(),
   status: z.enum(['upcoming', 'ongoing', 'completed', 'cancelled']).optional(),
-  country: z.string().length(2).optional(),
+  country: z.string().length(2, 'Country must be a 2-letter code').optional(),
+  logo: z.string().url('Invalid logo URL').optional(),
+  banner: z.string().url('Invalid banner URL').optional(),
   isFeatured: z.boolean().optional(),
 });
 

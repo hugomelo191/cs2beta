@@ -1,61 +1,70 @@
 import { Request, Response, NextFunction } from 'express';
 import { db } from '../db/connection.js';
-import { teams, players, teamMembers } from '../db/schema.js';
-import { eq, desc, asc, like, and } from 'drizzle-orm';
+import { teams, teamMembers, players } from '../db/schema.js';
+import { eq, desc, asc, like, and, or } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { CreateTeamSchema, UpdateTeamSchema } from '../types/index.js';
+import { getParam, getQuery, getQueryInt, getBody } from '../utils/requestHelpers.js';
 
 // @desc    Get all teams
 // @route   GET /api/teams
 // @access  Public
 export const getTeams = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const search = req.query.search as string;
-    const country = req.query.country as string;
-    const sortBy = req.query.sortBy as string || 'createdAt';
-    const sortOrder = req.query.sortOrder as string || 'desc';
+    const page = getQueryInt(req, 'page', 1);
+    const limit = getQueryInt(req, 'limit', 10);
+    const search = getQuery(req, 'search');
+    const country = getQuery(req, 'country');
+    const sortBy = getQuery(req, 'sortBy') || 'createdAt';
+    const sortOrder = getQuery(req, 'sortOrder') || 'desc';
 
     const offset = (page - 1) * limit;
 
     // Build where conditions
-    const whereConditions = [];
-    
+    let whereConditions: any[] = [];
+
     if (search) {
-      whereConditions.push(like(teams.name, `%${search}%`));
+      whereConditions.push(
+        or(
+          like(teams.name, `%${search}%`),
+          like(teams.tag, `%${search}%`),
+          like(teams.description, `%${search}%`)
+        )
+      );
     }
-    
+
     if (country) {
       whereConditions.push(eq(teams.country, country));
     }
 
-    whereConditions.push(eq(teams.isActive, true));
+    // Get valid sort columns
+    const validSortColumns = ['createdAt', 'name', 'tag', 'founded'];
+    const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'createdAt';
 
-    // Get teams with pagination
-    const teamsList = await db.query.teams.findMany({
+    const allTeams = await db.query.teams.findMany({
       where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      orderBy: sortOrder === 'desc' ? desc(teams[sortBy as keyof typeof teams]) : asc(teams[sortBy as keyof typeof teams]),
-      limit,
       offset,
+      limit,
+      orderBy: sortOrder === 'desc' ? desc(teams[sortColumn as keyof typeof teams] as any) : asc(teams[sortColumn as keyof typeof teams] as any),
     });
 
-    // Get total count
-    const totalCount = await db.select({ count: teams.id })
-      .from(teams)
-      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+    // Count total teams
+    const totalTeams = await db.query.teams.findMany({
+      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
+    });
 
-    const total = totalCount.length;
-    const totalPages = Math.ceil(total / limit);
+    const totalPages = Math.ceil(totalTeams.length / limit);
 
     res.json({
       success: true,
-      data: teamsList,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
+      data: {
+        teams: allTeams,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalTeams.length,
+          itemsPerPage: limit,
+        },
       },
     });
   } catch (error) {
@@ -63,12 +72,12 @@ export const getTeams = async (req: Request, res: Response, next: NextFunction) 
   }
 };
 
-// @desc    Get single team
+// @desc    Get single team with members
 // @route   GET /api/teams/:id
 // @access  Public
 export const getTeam = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     const team = await db.query.teams.findFirst({
       where: eq(teams.id, id),
@@ -82,20 +91,13 @@ export const getTeam = async (req: Request, res: Response, next: NextFunction) =
     const members = await db.query.teamMembers.findMany({
       where: eq(teamMembers.teamId, id),
       with: {
-        player: {
-          with: {
-            user: true,
-          },
-        },
+        player: true,
       },
     });
 
     // Get team players
-    const players = await db.query.players.findMany({
+    const teamPlayers = await db.query.players.findMany({
       where: eq(players.teamId, id),
-      with: {
-        user: true,
-      },
     });
 
     res.json({
@@ -103,7 +105,7 @@ export const getTeam = async (req: Request, res: Response, next: NextFunction) =
       data: {
         ...team,
         members,
-        players,
+        players: teamPlayers,
       },
     });
   } catch (error) {
@@ -117,28 +119,29 @@ export const getTeam = async (req: Request, res: Response, next: NextFunction) =
 export const createTeam = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Validate input
-    const validatedData = CreateTeamSchema.parse(req.body);
+    const validatedData = CreateTeamSchema.parse(getBody(req));
 
-    // Check if team tag already exists
-    const existingTeam = await db.query.teams.findFirst({
-      where: eq(teams.tag, validatedData.tag),
-    });
-
-    if (existingTeam) {
-      throw new CustomError('Team tag already exists', 400);
-    }
-
-    // Create team
     const [newTeam] = await db.insert(teams).values({
-      ...validatedData,
+      name: validatedData.name,
+      tag: validatedData.tag,
+      country: validatedData.country,
+      description: validatedData.description || null,
+      city: validatedData.city || null,
+      founded: validatedData.founded || null,
+      website: validatedData.website || null,
       socials: validatedData.socials || {},
-      achievements: [],
     }).returning();
+
+    if (!newTeam) {
+      throw new CustomError('Failed to create team', 500);
+    }
 
     res.status(201).json({
       success: true,
       message: 'Team created successfully',
-      data: newTeam,
+      data: {
+        team: newTeam,
+      },
     });
   } catch (error) {
     next(error);
@@ -150,10 +153,10 @@ export const createTeam = async (req: Request, res: Response, next: NextFunction
 // @access  Private
 export const updateTeam = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    
+    const id = getParam(req, 'id');
+
     // Validate input
-    const validatedData = UpdateTeamSchema.parse(req.body);
+    const validatedData = UpdateTeamSchema.parse(getBody(req));
 
     // Check if team exists
     const existingTeam = await db.query.teams.findFirst({
@@ -164,30 +167,32 @@ export const updateTeam = async (req: Request, res: Response, next: NextFunction
       throw new CustomError('Team not found', 404);
     }
 
-    // Check if new tag conflicts with existing team
-    if (validatedData.tag && validatedData.tag !== existingTeam.tag) {
-      const tagConflict = await db.query.teams.findFirst({
-        where: eq(teams.tag, validatedData.tag),
-      });
-
-      if (tagConflict) {
-        throw new CustomError('Team tag already exists', 400);
-      }
-    }
-
     // Update team
     const [updatedTeam] = await db.update(teams)
       .set({
-        ...validatedData,
+        name: validatedData.name || existingTeam.name,
+        tag: validatedData.tag || existingTeam.tag,
+        description: validatedData.description || existingTeam.description,
+        logo: validatedData.logo || existingTeam.logo,
+        banner: validatedData.banner || existingTeam.banner,
+        city: validatedData.city || existingTeam.city,
+        website: validatedData.website || existingTeam.website,
+        socials: validatedData.socials || existingTeam.socials,
         updatedAt: new Date(),
       })
       .where(eq(teams.id, id))
       .returning();
 
+    if (!updatedTeam) {
+      throw new CustomError('Failed to update team', 500);
+    }
+
     res.json({
       success: true,
       message: 'Team updated successfully',
-      data: updatedTeam,
+      data: {
+        team: updatedTeam,
+      },
     });
   } catch (error) {
     next(error);
@@ -199,7 +204,7 @@ export const updateTeam = async (req: Request, res: Response, next: NextFunction
 // @access  Private
 export const deleteTeam = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     // Check if team exists
     const existingTeam = await db.query.teams.findFirst({
@@ -210,13 +215,16 @@ export const deleteTeam = async (req: Request, res: Response, next: NextFunction
       throw new CustomError('Team not found', 404);
     }
 
-    // Soft delete - set isActive to false
-    await db.update(teams)
-      .set({
-        isActive: false,
-        updatedAt: new Date(),
-      })
-      .where(eq(teams.id, id));
+    // Remove all team members first
+    await db.delete(teamMembers).where(eq(teamMembers.teamId, id));
+
+    // Update players to remove team association
+    await db.update(players)
+      .set({ teamId: null })
+      .where(eq(players.teamId, id));
+
+    // Delete team
+    await db.delete(teams).where(eq(teams.id, id));
 
     res.json({
       success: true,
@@ -227,13 +235,12 @@ export const deleteTeam = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-// @desc    Add player to team
-// @route   POST /api/teams/:id/players
-// @access  Private
-export const addPlayerToTeam = async (req: Request, res: Response, next: NextFunction) => {
+// @desc    Get team members
+// @route   GET /api/teams/:id/members
+// @access  Public
+export const getTeamMembers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id: teamId } = req.params;
-    const { playerId, role = 'player' } = req.body;
+    const teamId = getParam(req, 'id');
 
     // Check if team exists
     const team = await db.query.teams.findFirst({
@@ -244,33 +251,48 @@ export const addPlayerToTeam = async (req: Request, res: Response, next: NextFun
       throw new CustomError('Team not found', 404);
     }
 
-    // Check if player exists
-    const player = await db.query.players.findFirst({
-      where: eq(players.id, playerId),
+    const members = await db.query.teamMembers.findMany({
+      where: eq(teamMembers.teamId, teamId),
+      with: {
+        player: true,
+      },
     });
-
-    if (!player) {
-      throw new CustomError('Player not found', 404);
-    }
-
-    // Check if player is already in a team
-    if (player.teamId && player.teamId !== teamId) {
-      throw new CustomError('Player is already in another team', 400);
-    }
-
-    // Add player to team
-    await db.insert(teamMembers).values({
-      teamId,
-      playerId,
-      role,
-    });
-
-    // Update player's team
-    await db.update(players)
-      .set({ teamId })
-      .where(eq(players.id, playerId));
 
     res.json({
+      success: true,
+      data: {
+        members,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Add player to team
+// @route   POST /api/teams/:id/members
+// @access  Private
+export const addTeamMember = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const teamId = getParam(req, 'id');
+    const { playerId, role }: { playerId: string; role: string } = getBody(req);
+
+    if (!playerId || !teamId) {
+      throw new CustomError('Team ID and Player ID are required', 400);
+    }
+
+    await db.insert(teamMembers).values({
+      teamId: teamId,
+      playerId: playerId,
+      role: role,
+    });
+
+    // Update player team association
+    await db.update(players)
+      .set({ teamId: teamId })
+      .where(eq(players.id, playerId));
+
+    res.status(201).json({
       success: true,
       message: 'Player added to team successfully',
     });
@@ -280,17 +302,18 @@ export const addPlayerToTeam = async (req: Request, res: Response, next: NextFun
 };
 
 // @desc    Remove player from team
-// @route   DELETE /api/teams/:id/players/:playerId
+// @route   DELETE /api/teams/:teamId/members/:playerId
 // @access  Private
-export const removePlayerFromTeam = async (req: Request, res: Response, next: NextFunction) => {
+export const removeTeamMember = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id: teamId, playerId } = req.params;
+    const teamId = getParam(req, 'teamId');
+    const playerId = getParam(req, 'playerId');
 
-    // Remove player from team members
-    await db.delete(teamMembers)
-      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.playerId, playerId)));
+    await db.delete(teamMembers).where(
+      and(eq(teamMembers.teamId, teamId), eq(teamMembers.playerId, playerId))
+    );
 
-    // Update player's team to null
+    // Remove player team association
     await db.update(players)
       .set({ teamId: null })
       .where(eq(players.id, playerId));
@@ -309,29 +332,92 @@ export const removePlayerFromTeam = async (req: Request, res: Response, next: Ne
 // @access  Public
 export const getFeaturedTeams = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 6;
+    const limit = getQueryInt(req, 'limit', 6);
 
     const featuredTeams = await db.query.teams.findMany({
-      where: and(eq(teams.isActive, true)),
-      orderBy: desc(teams.createdAt),
       limit,
+      orderBy: desc(teams.createdAt),
     });
 
     res.json({
       success: true,
-      data: featuredTeams,
+      data: {
+        teams: featuredTeams,
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Create team for current player (becomes captain)
-// @route   POST /api/teams/create-my-team
+// @desc    Create team and add creator as member
+// @route   POST /api/teams/create-with-user
 // @access  Private
-export const createMyTeam = async (req: Request, res: Response, next: NextFunction) => {
+export const createTeamWithUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = (req as any).user.id;
+    // Validate input
+    const validatedData = CreateTeamSchema.parse(getBody(req));
+
+    const [newTeam] = await db.insert(teams).values({
+      name: validatedData.name,
+      tag: validatedData.tag,
+      country: validatedData.country,
+      description: validatedData.description || null,
+      city: validatedData.city || null,
+      founded: validatedData.founded || null,
+      website: validatedData.website || null,
+      socials: validatedData.socials || {},
+    }).returning();
+
+    if (!newTeam) {
+      throw new CustomError('Failed to create team', 500);
+    }
+
+    // Add creator as team member (captain)
+    await db.insert(teamMembers).values({
+      teamId: newTeam.id,
+      playerId: req.user?.id || '',
+      role: 'captain',
+    });
+
+    // Update player team association
+    await db.update(players)
+      .set({ teamId: newTeam.id })
+      .where(eq(teams.id, newTeam.id));
+
+    const teamWithMembers = await db.query.teams.findFirst({
+      where: eq(teams.id, newTeam.id),
+      with: {
+        members: {
+          with: {
+            player: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Team created successfully',
+      data: {
+        team: teamWithMembers,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get user's team invitations
+// @route   GET /api/teams/invitations
+// @access  Private
+export const getUserTeamInvitations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new CustomError('User not authenticated', 401);
+    }
 
     // Get user's player profile
     const userPlayer = await db.query.players.findFirst({
@@ -339,149 +425,32 @@ export const createMyTeam = async (req: Request, res: Response, next: NextFuncti
     });
 
     if (!userPlayer) {
-      throw new CustomError('Player profile not found. Please complete your player profile first.', 404);
+      throw new CustomError('Player profile not found', 404);
     }
 
-    // Check if player already has a team
-    if (userPlayer.teamId) {
-      throw new CustomError('You are already part of a team. Leave your current team first.', 400);
-    }
-
-    // Validate input
-    const validatedData = CreateTeamSchema.parse(req.body);
-
-    // Check if team tag already exists
-    const existingTeam = await db.query.teams.findFirst({
-      where: eq(teams.tag, validatedData.tag),
-    });
-
-    if (existingTeam) {
-      throw new CustomError('Team tag already exists', 400);
-    }
-
-    // Create team
-    const [newTeam] = await db.insert(teams).values({
-      ...validatedData,
-      achievements: [],
-      socials: validatedData.socials || {},
-    }).returning();
-
-    // Update player to be part of this team
-    await db.update(players)
-      .set({ 
-        teamId: newTeam.id,
-        role: 'player', // Can be changed later to captain
-        updatedAt: new Date()
-      })
-      .where(eq(players.id, userPlayer.id));
-
-    // Add player as team member with captain role
-    await db.insert(teamMembers).values({
-      teamId: newTeam.id,
-      playerId: userPlayer.id,
-      role: 'captain',
-      isActive: true,
-    });
-
-    // Get team with relations
-    const teamWithRelations = await db.query.teams.findFirst({
-      where: eq(teams.id, newTeam.id),
-      with: {
-        players: {
-          with: {
-            user: {
-              columns: {
-                id: true,
-                username: true,
-                avatar: true,
-              }
-            }
-          }
+    if (!userPlayer.teamId) {
+      res.json({
+        success: true,
+        data: {
+          invitations: [],
         },
-        members: {
-          with: {
-            player: {
-              with: {
-                user: {
-                  columns: {
-                    id: true,
-                    username: true,
-                    avatar: true,
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Team created successfully! You are now the team captain.',
-      data: teamWithRelations,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Leave current team
-// @route   POST /api/teams/leave
-// @access  Private
-export const leaveTeam = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = (req as any).user.id;
-
-    // Get user's player profile
-    const userPlayer = await db.query.players.findFirst({
-      where: eq(players.userId, userId),
-      with: {
-        team: true
-      }
-    });
-
-    if (!userPlayer || !userPlayer.teamId) {
-      throw new CustomError('You are not part of any team', 400);
+      });
+      return;
     }
 
-    // Check if user is the only member/captain
-    const teamMembers = await db.query.teamMembers.findMany({
+    // Get pending team invitations
+    const activeTeamMembers = await db.query.teamMembers.findMany({
       where: and(
         eq(teamMembers.teamId, userPlayer.teamId),
         eq(teamMembers.isActive, true)
-      )
+      ),
     });
-
-    // If user is the only member, delete the team
-    if (teamMembers.length === 1) {
-      await db.delete(teams).where(eq(teams.id, userPlayer.teamId));
-    } else {
-      // Remove from team members
-      await db.update(teamMembers)
-        .set({ 
-          isActive: false,
-          leftAt: new Date() 
-        })
-        .where(and(
-          eq(teamMembers.teamId, userPlayer.teamId),
-          eq(teamMembers.playerId, userPlayer.id)
-        ));
-    }
-
-    // Update player to remove team association
-    await db.update(players)
-      .set({ 
-        teamId: null,
-        updatedAt: new Date()
-      })
-      .where(eq(players.id, userPlayer.id));
 
     res.json({
       success: true,
-      message: teamMembers.length === 1 
-        ? 'Team disbanded successfully as you were the only member.'
-        : 'Left team successfully.',
+      data: {
+        invitations: activeTeamMembers,
+      },
     });
   } catch (error) {
     next(error);

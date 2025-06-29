@@ -87,6 +87,17 @@ async function seed() {
 
     console.log('✅ Teams created');
 
+    // Verify entities were created
+    if (!adminUser) {
+      throw new Error('Failed to create admin user');
+    }
+    if (!user1 || !user2) {
+      throw new Error('Failed to create users');
+    }
+    if (!team1 || !team2) {
+      throw new Error('Failed to create teams');
+    }
+
     // Create players
     await db.insert(players).values([
       {
