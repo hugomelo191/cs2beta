@@ -74,7 +74,7 @@ export const createDraftPost = async (req: AuthRequest, res: Response) => {
       isActive: true,
       views: 0,
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 dias
-    }).returning();
+    } as any).returning();
 
     return res.status(201).json({
       success: true,
@@ -165,7 +165,7 @@ export const getDraftPost = async (req: Request, res: Response) => {
     }
 
     await db.update(draftPosts)
-      .set({ views: (currentPost.views || 0) + 1 })
+      .set({ views: (currentPost.views || 0) + 1 } as any)
       .where(eq(draftPosts.id, id));
 
     return res.json({
@@ -221,7 +221,7 @@ export const deleteDraftPost = async (req: AuthRequest, res: Response) => {
       .set({ 
         isActive: false,
         updatedAt: new Date()
-      })
+      } as any)
       .where(eq(draftPosts.id, id));
 
     return res.json({
@@ -260,3 +260,4 @@ export const getDraftPostStats = async (req: Request, res: Response) => {
     });
   }
 }; 
+

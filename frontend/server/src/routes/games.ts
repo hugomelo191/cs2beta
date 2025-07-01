@@ -13,4 +13,18 @@ router.get('/player/faceit/:faceitId', gameController.getFaceitPlayerStats);
 // Rotas protegidas (apenas admins/moderadores)
 router.put('/:gameId/score', protect, gameController.updateGameScore);
 
+// 🔥 NOVAS ROTAS - Resultados FILTRADOS (apenas equipas registadas)
+router.get('/matches/live', gameController.getLiveMatches);
+router.get('/matches/recent', gameController.getRecentMatches);
+router.get('/matches/history', gameController.getRegisteredTeamsHistory);
+router.get('/matches/:matchId', gameController.getMatchDetails);
+router.get('/matches/:matchId/stats', gameController.getMatchStats);
+
+// 🔥 EQUIPAS REGISTADAS
+router.get('/teams/registered', gameController.getRegisteredTeams);
+router.get('/teams/registered/:teamId/stats', gameController.getRegisteredTeamStats);
+
+// 🔥 RANKINGS PORTUGUESES (baseado em equipas registadas)
+router.get('/rankings/portugal', gameController.getPortugueseRankings);
+
 export default router; 

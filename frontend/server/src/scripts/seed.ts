@@ -27,7 +27,7 @@ const seedData = async () => {
       role: 'admin',
       isVerified: true,
       country: 'pt',
-    }).returning();
+    } as any).returning();
 
     // Create teams
     console.log('🏆 Creating teams...');
@@ -451,7 +451,7 @@ O formato será Double Elimination, com mapas: de_dust2, de_mirage, de_inferno, 
       await db.insert(news).values({
         ...newsDataItem,
         publishedAt: new Date(),
-      });
+      } as any);
     }
 
     // Create casters

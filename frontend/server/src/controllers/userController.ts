@@ -161,7 +161,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
         country: validatedData.country || existingUser.country,
         password: hashedPassword || existingUser.password,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(users.id, id))
       .returning({
         id: users.id,
@@ -212,7 +212,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
       .set({
         isActive: false,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(users.id, id));
 
     res.json({
@@ -317,7 +317,7 @@ export const adminUpdateUser = async (req: Request, res: Response, next: NextFun
         role: role || existingUser.role,
         isVerified: isVerified ?? existingUser.isVerified,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(users.id, id))
       .returning({
         id: users.id,
@@ -386,7 +386,7 @@ export const adminChangePassword = async (req: Request, res: Response, next: Nex
       .set({
         password: hashedNewPassword,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(users.id, id));
 
     res.json({
@@ -461,7 +461,7 @@ export const toggleUserStatus = async (req: Request, res: Response, next: NextFu
       .set({
         isActive: !user.isActive,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(users.id, id))
       .returning({
         id: users.id,
@@ -516,3 +516,4 @@ export const getUsersByRole = async (req: Request, res: Response, next: NextFunc
     next(error);
   }
 }; 
+

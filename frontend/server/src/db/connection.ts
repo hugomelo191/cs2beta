@@ -1,19 +1,22 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from './schema.js';
+import * as schema from './schema';
+import * as dotenv from 'dotenv';
 
-// Configuração da base de dados CS2BETA
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres@localhost:5432/cs2beta';
+// Carregar variáveis de ambiente
+dotenv.config();
+
+// Configuração da base de dados PostgreSQL
+const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_In3ZMx2OFYJt@ep-gentle-frog-a2mnd95w-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
 
 // Cliente PostgreSQL
-const queryClient = postgres(connectionString, {
-  max: 10,
-  idle_timeout: 20,
-  connect_timeout: 10,
+const sql = postgres(connectionString, {
+  ssl: 'require',
+  max: 1,
 });
 
 // Instância Drizzle
-export const db = drizzle(queryClient, { schema });
+export const db = drizzle(sql, { schema });
 
 // Cliente Redis (opcional - para cache)
 let redis: any = null;
@@ -36,7 +39,7 @@ export { redis };
 // Teste de conexão
 export async function testConnection() {
   try {
-    await queryClient`SELECT 1 as test`;
+    await sql`SELECT 1 as test`;
     console.log('✅ Conexão PostgreSQL estabelecida');
     return true;
   } catch (error) {

@@ -5,6 +5,7 @@ import { eq, desc, asc, like, and, or, sql } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { CreatePlayerSchema, UpdatePlayerSchema } from '../types/index.js';
 import { getQuery, getQueryInt, getParam, getBody } from '../utils/requestHelpers.js';
+import { faceitService } from '../services/faceitService.js';
 
 // @desc    Get all players
 // @route   GET /api/players
@@ -61,7 +62,20 @@ export const getPlayers = async (req: Request, res: Response, next: NextFunction
           }
         }
       },
-      orderBy: sortOrder === 'desc' ? desc(players[sortBy as keyof typeof players]) : asc(players[sortBy as keyof typeof players]),
+      orderBy: (() => {
+        switch (sortBy) {
+          case 'nickname':
+            return sortOrder === 'desc' ? desc(players.nickname) : asc(players.nickname);
+          case 'country':
+            return sortOrder === 'desc' ? desc(players.country) : asc(players.country);
+          case 'createdAt':
+            return sortOrder === 'desc' ? desc(players.createdAt) : asc(players.createdAt);
+          case 'faceitElo':
+            return sortOrder === 'desc' ? desc(players.faceitElo) : asc(players.faceitElo);
+          default:
+            return desc(players.createdAt);
+        }
+      })(),
       limit,
       offset,
     });
@@ -140,7 +154,7 @@ export const getPlayer = async (req: Request, res: Response, next: NextFunction)
             ...player.stats,
             views: currentViews + 1
           }
-        })
+        } as any)
         .where(eq(players.id, id));
     }
 
@@ -245,7 +259,7 @@ export const updatePlayer = async (req: Request, res: Response, next: NextFuncti
       .set({
         ...validatedData,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(players.id, id))
       .returning();
 
@@ -295,7 +309,7 @@ export const deletePlayer = async (req: Request, res: Response, next: NextFuncti
       .set({
         isActive: false,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(players.id, id));
 
     res.json({
@@ -403,18 +417,18 @@ export const updatePlayerStats = async (req: Request, res: Response, next: NextF
     const currentStats = existingPlayer.stats || {};
     const updatedStats = {
       ...currentStats,
-      kd: kd !== undefined ? kd : currentStats.kd,
-      adr: adr !== undefined ? adr : currentStats.adr,
-      maps_played: maps_played !== undefined ? maps_played : currentStats.maps_played,
-      wins: wins !== undefined ? wins : currentStats.wins,
-      losses: losses !== undefined ? losses : currentStats.losses,
+      kd: kd !== undefined ? kd : (currentStats as any).kd,
+      adr: adr !== undefined ? adr : (currentStats as any).adr,
+      maps_played: maps_played !== undefined ? maps_played : (currentStats as any).maps_played,
+      wins: wins !== undefined ? wins : (currentStats as any).wins,
+      losses: losses !== undefined ? losses : (currentStats as any).losses,
     };
 
     await db.update(players)
       .set({
         stats: updatedStats,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(players.id, id));
 
     res.json({
@@ -468,4 +482,220 @@ export const getPlayersByPosition = async (req: Request, res: Response, next: Ne
   } catch (error) {
     next(error);
   }
+};
+
+// 🔥 NOVOS ENDPOINTS: Histórico e matches em direto
+export const getPlayerHistory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Buscar o jogador na base de dados
+    const playersResult = await db
+      .select()
+      .from(players as any)
+      .where(eq(players.id, parseInt(id)));
+
+    if (playersResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Jogador não encontrado'
+      });
+    }
+
+    const player = playersResult[0];
+
+    // Se o jogador tem Faceit ID, buscar histórico real
+    if (player.faceit_id) {
+      try {
+        const history = await faceitService.getPlayerMatchHistory(player.faceit_id, limit, offset);
+        
+        res.json({
+          success: true,
+          data: {
+            player: {
+              id: player.id,
+              nickname: player.nickname,
+              faceit_nickname: player.faceit_nickname
+            },
+            matches: history?.items || [],
+            pagination: {
+              limit,
+              offset,
+              hasMore: (history?.items?.length || 0) === limit
+            }
+          }
+        });
+        return;
+      } catch (error) {
+        console.error('Erro ao buscar histórico Faceit:', error);
+        // Fallback para mock data se Faceit falhar
+      }
+    }
+
+    // Mock data se não tiver Faceit ou falhar
+    const mockHistory = [
+      {
+        match_id: `mock_${player.id}_1`,
+        status: 'FINISHED',
+        finished_at: Date.now() - 3600000,
+        teams: {
+          faction1: { nickname: player.team || 'Team A', score: 16 },
+          faction2: { nickname: 'Team B', score: 12 }
+        },
+        map: 'de_dust2',
+        result: 'win'
+      }
+    ];
+
+    res.json({
+      success: true,
+      data: {
+        player: {
+          id: player.id,
+          nickname: player.nickname,
+          faceit_nickname: player.faceit_nickname
+        },
+        matches: mockHistory,
+        pagination: { limit, offset, hasMore: false }
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar histórico do jogador:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar histórico do jogador'
+    });
+  }
+};
+
+export const getPlayerLiveMatches = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar o jogador na base de dados
+    const playersResult = await db
+      .select()
+      .from(players as any)
+      .where(eq(players.id, parseInt(id)));
+
+    if (playersResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Jogador não encontrado'
+      });
+    }
+
+    const player = playersResult[0];
+
+    // Se o jogador tem Faceit ID, buscar matches em direto
+    if (player.faceit_id) {
+      try {
+        const liveMatches = await faceitService.getPlayerLiveMatches(player.faceit_id);
+        
+        res.json({
+          success: true,
+          data: {
+            player: {
+              id: player.id,
+              nickname: player.nickname,
+              faceit_nickname: player.faceit_nickname
+            },
+            live_matches: liveMatches
+          }
+        });
+        return;
+      } catch (error) {
+        console.error('Erro ao buscar matches em direto:', error);
+      }
+    }
+
+    // Retornar vazio se não tiver Faceit ou falhar
+    res.json({
+      success: true,
+      data: {
+        player: {
+          id: player.id,
+          nickname: player.nickname,
+          faceit_nickname: player.faceit_nickname
+        },
+        live_matches: []
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao buscar matches em direto do jogador:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao buscar matches em direto do jogador'
+    });
+  }
+};
+
+export const syncPlayerFaceit = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar o jogador na base de dados
+    const playersResult = await db
+      .select()
+      .from(players as any)
+      .where(eq(players.id, parseInt(id)));
+
+    if (playersResult.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Jogador não encontrado'
+      });
+    }
+
+    const player = playersResult[0];
+
+    if (!player.faceit_nickname) {
+      return res.status(400).json({
+        success: false,
+        error: 'Jogador não tem nickname Faceit configurado'
+      });
+    }
+
+    // Buscar dados atualizados do Faceit
+    const faceitData = await faceitService.getCompletePlayerDataWithHistory(player.faceit_nickname, 5);
+    
+    if (!faceitData) {
+      return res.status(404).json({
+        success: false,
+        error: 'Dados Faceit não encontrados'
+      });
+    }
+
+    // Atualizar dados na base de dados
+    await db
+      .update(players as any)
+      .set({
+        faceit_id: faceitData.faceit_id,
+        faceit_elo: faceitData.faceit_elo,
+        faceit_level: faceitData.faceit_level,
+        updated_at: new Date()
+      } as any)
+      .where(eq(players.id, parseInt(id)));
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Dados Faceit sincronizados com sucesso',
+        player: {
+          id: player.id,
+          nickname: player.nickname,
+          faceit_data: faceitData
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao sincronizar Faceit:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro ao sincronizar dados Faceit'
+    });
+  }
 }; 
+

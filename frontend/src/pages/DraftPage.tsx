@@ -8,6 +8,7 @@ import { FilterPanel, FilterGroup } from '@/components/ui/FilterPanel';
 import { FavoriteButton } from '@/components/ui/FavoriteButton';
 import { QuickActions, createQuickActions } from '@/components/ui/QuickActions';
 import { Modal } from '@/components/ui/modal/Modal';
+import { PlayerProfileModal } from '@/components/ui/modal/PlayerProfileModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { mockPlayers } from '@/lib/constants/mock-data';
 
@@ -141,6 +142,10 @@ export function DraftPage() {
   const [teamFiltersState, setTeamFiltersState] = useState<Record<string, any>>({});
   const [showPlayerPostModal, setShowPlayerPostModal] = useState(false);
   const [showTeamPostModal, setShowTeamPostModal] = useState(false);
+  
+  // 🔥 NOVO: Estado para modal de perfil do jogador
+  const [showPlayerProfileModal, setShowPlayerProfileModal] = useState(false);
+  const [selectedPlayerForProfile, setSelectedPlayerForProfile] = useState<any>(null);
 
   // Filter players with active posts logic
   const filteredPlayers = mockPlayers.filter(player => {
@@ -425,7 +430,15 @@ export function DraftPage() {
         >
           {activeTab === 'players' ? (
             filteredPlayers.map((player, index) => (
-              <PlayerConnectionCard key={player.id} player={player} index={index} />
+                              <PlayerConnectionCard 
+                  key={player.id} 
+                  player={player} 
+                  index={index}
+                  onViewProfile={(player) => {
+                    setSelectedPlayerForProfile(player);
+                    setShowPlayerProfileModal(true);
+                  }}
+                />
             ))
           ) : (
             filteredTeams.map((team, index) => (
@@ -540,13 +553,29 @@ export function DraftPage() {
             onCancel={() => setShowTeamPostModal(false)}
           />
         </Modal>
+
+        {/* 🔥 NOVA: Player Profile Modal */}
+        <PlayerProfileModal
+          isOpen={showPlayerProfileModal}
+          onClose={() => setShowPlayerProfileModal(false)}
+          playerNickname={selectedPlayerForProfile?.nickname || ''}
+          initialPlayerData={selectedPlayerForProfile}
+        />
       </div>
     </main>
   );
 }
 
 // Player Connection Card
-function PlayerConnectionCard({ player, index }: { player: any; index: number }) {
+function PlayerConnectionCard({ 
+  player, 
+  index,
+  onViewProfile 
+}: { 
+  player: any; 
+  index: number;
+  onViewProfile: (player: any) => void;
+}) {
   const [isFavorite, setIsFavorite] = useState(false);
   
   const quickActions = [
@@ -554,7 +583,8 @@ function PlayerConnectionCard({ player, index }: { player: any; index: number })
       alert(`Contactar ${player.nickname}`);
     }),
     createQuickActions.viewProfile(() => {
-      alert(`Ver perfil de ${player.nickname}`);
+      // 🔥 NOVO: Abrir modal de perfil em vez de alert
+      onViewProfile(player);
     }),
     createQuickActions.share(() => {
       navigator.share?.({

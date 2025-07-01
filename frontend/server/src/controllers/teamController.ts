@@ -37,23 +37,14 @@ export const getTeams = async (req: Request, res: Response, next: NextFunction) 
       whereConditions.push(eq(teams.country, country));
     }
 
-    // Get valid sort columns
-    const validSortColumns = ['createdAt', 'name', 'tag', 'founded'];
-    const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'createdAt';
-
-    const allTeams = await db.query.teams.findMany({
-      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      offset,
-      limit,
-      orderBy: sortOrder === 'desc' ? desc(teams[sortColumn as keyof typeof teams] as any) : asc(teams[sortColumn as keyof typeof teams] as any),
-    });
+    // Get teams with simple select
+    const allTeams = await db.select().from(teams).limit(limit).offset(offset);
 
     // Count total teams
-    const totalTeams = await db.query.teams.findMany({
-      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-    });
+    const [countResult] = await db.select({ count: teams.id }).from(teams);
+    const totalItems = await db.select().from(teams);
 
-    const totalPages = Math.ceil(totalTeams.length / limit);
+    const totalPages = Math.ceil(totalItems.length / limit);
 
     res.json({
       success: true,
@@ -62,12 +53,13 @@ export const getTeams = async (req: Request, res: Response, next: NextFunction) 
         pagination: {
           currentPage: page,
           totalPages,
-          totalItems: totalTeams.length,
+          totalItems: totalItems.length,
           itemsPerPage: limit,
         },
       },
     });
   } catch (error) {
+    console.error('Error fetching teams:', error);
     next(error);
   }
 };
@@ -79,36 +71,28 @@ export const getTeam = async (req: Request, res: Response, next: NextFunction) =
   try {
     const id = getParam(req, 'id');
 
-    const team = await db.query.teams.findFirst({
-      where: eq(teams.id, id),
-    });
+    const [teamData] = await db.select().from(teams).where(eq(teams.id, id)).limit(1);
 
-    if (!team) {
+    if (!teamData) {
       throw new CustomError('Team not found', 404);
     }
 
     // Get team members
-    const members = await db.query.teamMembers.findMany({
-      where: eq(teamMembers.teamId, id),
-      with: {
-        player: true,
-      },
-    });
+    const members = await db.select().from(teamMembers).where(eq(teamMembers.teamId, id));
 
     // Get team players
-    const teamPlayers = await db.query.players.findMany({
-      where: eq(players.teamId, id),
-    });
+    const teamPlayers = await db.select().from(players).where(eq(players.teamId, id));
 
     res.json({
       success: true,
       data: {
-        ...team,
+        ...teamData,
         members,
         players: teamPlayers,
       },
     });
   } catch (error) {
+    console.error('Error fetching team:', error);
     next(error);
   }
 };
@@ -179,7 +163,7 @@ export const updateTeam = async (req: Request, res: Response, next: NextFunction
         website: validatedData.website || existingTeam.website,
         socials: validatedData.socials || existingTeam.socials,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(teams.id, id))
       .returning();
 
@@ -220,7 +204,7 @@ export const deleteTeam = async (req: Request, res: Response, next: NextFunction
 
     // Update players to remove team association
     await db.update(players)
-      .set({ teamId: null })
+      .set({ teamId: null } as any)
       .where(eq(players.teamId, id));
 
     // Delete team
@@ -285,11 +269,11 @@ export const addTeamMember = async (req: Request, res: Response, next: NextFunct
       teamId: teamId,
       playerId: playerId,
       role: role,
-    });
+    } as any);
 
     // Update player team association
     await db.update(players)
-      .set({ teamId: teamId })
+      .set({ teamId: teamId } as any)
       .where(eq(players.id, playerId));
 
     res.status(201).json({
@@ -315,7 +299,7 @@ export const removeTeamMember = async (req: Request, res: Response, next: NextFu
 
     // Remove player team association
     await db.update(players)
-      .set({ teamId: null })
+      .set({ teamId: null } as any)
       .where(eq(players.id, playerId));
 
     res.json({
@@ -378,11 +362,11 @@ export const createTeamWithUser = async (req: Request, res: Response, next: Next
       teamId: newTeam.id,
       playerId: req.user?.id || '',
       role: 'captain',
-    });
+    } as any);
 
     // Update player team association
     await db.update(players)
-      .set({ teamId: newTeam.id })
+      .set({ teamId: newTeam.id } as any)
       .where(eq(teams.id, newTeam.id));
 
     const teamWithMembers = await db.query.teams.findFirst({

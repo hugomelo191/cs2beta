@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS "caster_applications" (
+CREATE TABLE "caster_applications" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"type" varchar(20) NOT NULL,
 	"name" varchar(100) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS "caster_applications" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "casters" (
+CREATE TABLE "casters" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid,
 	"name" varchar(100) NOT NULL,
@@ -31,9 +31,11 @@ CREATE TABLE IF NOT EXISTS "casters" (
 	"country" varchar(2) NOT NULL,
 	"languages" json,
 	"followers" integer DEFAULT 0,
-	"rating" numeric(3, 2) DEFAULT '0.00',
+	"rating" integer DEFAULT 0,
+	"total_ratings" integer DEFAULT 0,
 	"experience" varchar(50),
 	"socials" json,
+	"views" integer DEFAULT 0,
 	"is_live" boolean DEFAULT false,
 	"current_game" text,
 	"is_active" boolean DEFAULT true,
@@ -41,17 +43,42 @@ CREATE TABLE IF NOT EXISTS "casters" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "draft_applications" (
+CREATE TABLE "draft_applications" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"draft_id" uuid,
 	"team_id" uuid,
+	"applicant_id" uuid,
 	"status" varchar(20) DEFAULT 'pending',
 	"message" text,
 	"created_at" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "drafts" (
+CREATE TABLE "draft_posts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"author_id" uuid NOT NULL,
+	"type" varchar(20) NOT NULL,
+	"title" varchar(200) NOT NULL,
+	"description" text NOT NULL,
+	"nickname" varchar(100),
+	"role" varchar(50),
+	"experience" varchar(50),
+	"availability" varchar(50),
+	"looking_for" varchar(200),
+	"team_name" varchar(100),
+	"looking_for_role" varchar(50),
+	"commitment" varchar(50),
+	"requirements" text,
+	"urgency" varchar(20) DEFAULT 'normal',
+	"country" varchar(2),
+	"is_active" boolean DEFAULT true,
+	"views" integer DEFAULT 0,
+	"expires_at" timestamp,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
+CREATE TABLE "drafts" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" varchar(200) NOT NULL,
 	"description" text,
@@ -59,6 +86,9 @@ CREATE TABLE IF NOT EXISTS "drafts" (
 	"organizer_id" uuid,
 	"max_teams" integer NOT NULL,
 	"current_teams" integer DEFAULT 0,
+	"max_applications" integer,
+	"current_applications" integer DEFAULT 0,
+	"country" varchar(2),
 	"start_date" timestamp NOT NULL,
 	"end_date" timestamp NOT NULL,
 	"status" varchar(20) DEFAULT 'open',
@@ -68,7 +98,7 @@ CREATE TABLE IF NOT EXISTS "drafts" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "news" (
+CREATE TABLE "news" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" varchar(200) NOT NULL,
 	"excerpt" text,
@@ -86,7 +116,7 @@ CREATE TABLE IF NOT EXISTS "news" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "players" (
+CREATE TABLE "players" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid,
 	"team_id" uuid,
@@ -115,7 +145,7 @@ CREATE TABLE IF NOT EXISTS "players" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "team_members" (
+CREATE TABLE "team_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"team_id" uuid,
 	"player_id" uuid,
@@ -125,7 +155,7 @@ CREATE TABLE IF NOT EXISTS "team_members" (
 	"is_active" boolean DEFAULT true
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "teams" (
+CREATE TABLE "teams" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(100) NOT NULL,
 	"tag" varchar(10) NOT NULL,
@@ -144,7 +174,7 @@ CREATE TABLE IF NOT EXISTS "teams" (
 	CONSTRAINT "teams_tag_unique" UNIQUE("tag")
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "tournament_participants" (
+CREATE TABLE "tournament_participants" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"tournament_id" uuid,
 	"team_id" uuid,
@@ -154,14 +184,14 @@ CREATE TABLE IF NOT EXISTS "tournament_participants" (
 	"created_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "tournaments" (
+CREATE TABLE "tournaments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(200) NOT NULL,
 	"description" text,
 	"logo" text,
 	"banner" text,
 	"organizer" varchar(100) NOT NULL,
-	"prize_pool" numeric(10, 2),
+	"prize_pool" integer,
 	"currency" varchar(3) DEFAULT 'EUR',
 	"start_date" timestamp NOT NULL,
 	"end_date" timestamp NOT NULL,
@@ -178,94 +208,40 @@ CREATE TABLE IF NOT EXISTS "tournaments" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS "users" (
+CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" varchar(255) NOT NULL,
-	"username" varchar(100) NOT NULL,
+	"username" varchar(50) NOT NULL,
 	"password" varchar(255) NOT NULL,
 	"first_name" varchar(100),
 	"last_name" varchar(100),
 	"avatar" text,
 	"bio" text,
-	"country" varchar(2) DEFAULT 'pt',
-	"role" varchar(20) DEFAULT 'user',
-	"is_verified" boolean DEFAULT false,
-	"is_active" boolean DEFAULT true,
+	"country" varchar(2),
+	"role" varchar(20) DEFAULT 'user' NOT NULL,
+	"is_active" boolean DEFAULT true NOT NULL,
+	"is_verified" boolean DEFAULT false NOT NULL,
+	"verification_token" varchar(255),
+	"reset_password_token" varchar(255),
+	"reset_password_expires" timestamp,
 	"last_login" timestamp,
-	"created_at" timestamp DEFAULT now(),
+	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now(),
 	CONSTRAINT "users_email_unique" UNIQUE("email"),
 	CONSTRAINT "users_username_unique" UNIQUE("username")
 );
 --> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "caster_applications" ADD CONSTRAINT "caster_applications_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "users"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "casters" ADD CONSTRAINT "casters_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "draft_applications" ADD CONSTRAINT "draft_applications_draft_id_drafts_id_fk" FOREIGN KEY ("draft_id") REFERENCES "drafts"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "draft_applications" ADD CONSTRAINT "draft_applications_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "drafts" ADD CONSTRAINT "drafts_tournament_id_tournaments_id_fk" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "drafts" ADD CONSTRAINT "drafts_organizer_id_users_id_fk" FOREIGN KEY ("organizer_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "players" ADD CONSTRAINT "players_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "players" ADD CONSTRAINT "players_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE set null ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "team_members" ADD CONSTRAINT "team_members_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "team_members" ADD CONSTRAINT "team_members_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "players"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_tournament_id_tournaments_id_fk" FOREIGN KEY ("tournament_id") REFERENCES "tournaments"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
---> statement-breakpoint
-DO $$ BEGIN
- ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
-END $$;
+ALTER TABLE "caster_applications" ADD CONSTRAINT "caster_applications_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "casters" ADD CONSTRAINT "casters_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "draft_applications" ADD CONSTRAINT "draft_applications_draft_id_drafts_id_fk" FOREIGN KEY ("draft_id") REFERENCES "public"."drafts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "draft_applications" ADD CONSTRAINT "draft_applications_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "draft_applications" ADD CONSTRAINT "draft_applications_applicant_id_users_id_fk" FOREIGN KEY ("applicant_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "draft_posts" ADD CONSTRAINT "draft_posts_author_id_users_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "drafts" ADD CONSTRAINT "drafts_tournament_id_tournaments_id_fk" FOREIGN KEY ("tournament_id") REFERENCES "public"."tournaments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "drafts" ADD CONSTRAINT "drafts_organizer_id_users_id_fk" FOREIGN KEY ("organizer_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "players" ADD CONSTRAINT "players_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "players" ADD CONSTRAINT "players_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "team_members" ADD CONSTRAINT "team_members_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "team_members" ADD CONSTRAINT "team_members_player_id_players_id_fk" FOREIGN KEY ("player_id") REFERENCES "public"."players"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_tournament_id_tournaments_id_fk" FOREIGN KEY ("tournament_id") REFERENCES "public"."tournaments"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "tournament_participants" ADD CONSTRAINT "tournament_participants_team_id_teams_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE cascade ON UPDATE no action;

@@ -5,7 +5,7 @@ import { eq, desc } from 'drizzle-orm';
 import { getQuery, getQueryInt, getParam, getBody } from '../utils/requestHelpers.js';
 
 // Criar candidatura
-export const createApplication = async (req: Request, res: Response) => {
+export const createApplication = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const {
       type,
@@ -44,7 +44,7 @@ export const createApplication = async (req: Request, res: Response) => {
         youtubeChannel,
         portfolio,
         motivation
-      })
+      } as any)
       .returning();
 
     res.status(201).json({
@@ -53,11 +53,7 @@ export const createApplication = async (req: Request, res: Response) => {
       data: application
     });
   } catch (error) {
-    console.error('Erro ao criar candidatura:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro interno do servidor'
-    });
+    next(error);
   }
 };
 
@@ -98,7 +94,7 @@ export const getApplications = async (req: Request, res: Response) => {
 };
 
 // Obter candidatura específica
-export const getApplication = async (req: Request, res: Response) => {
+export const getApplication = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = getParam(req, 'id');
     
@@ -125,16 +121,12 @@ export const getApplication = async (req: Request, res: Response) => {
       data: application
     });
   } catch (error) {
-    console.error('Erro ao buscar candidatura:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro interno do servidor'
-    });
+    next(error);
   }
 };
 
 // Revisar candidatura (Aprovar/Rejeitar)
-export const reviewApplication = async (req: Request, res: Response) => {
+export const reviewApplication = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = getParam(req, 'id');
     const body = getBody(req) as { status: string; reviewNotes?: string };
@@ -184,11 +176,7 @@ export const reviewApplication = async (req: Request, res: Response) => {
       data: updatedApplication
     });
   } catch (error) {
-    console.error('Erro ao revisar candidatura:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erro interno do servidor'
-    });
+    next(error);
   }
 };
 

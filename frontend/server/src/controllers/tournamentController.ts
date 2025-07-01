@@ -149,7 +149,7 @@ export const createTournament = async (req: Request, res: Response, next: NextFu
       logo: validatedData.logo || null,
       banner: validatedData.banner || null,
       isFeatured: validatedData.isFeatured || false,
-    }).returning();
+    } as any).returning();
 
     res.status(201).json({
       success: true,
@@ -202,7 +202,7 @@ export const updateTournament = async (req: Request, res: Response, next: NextFu
         banner: validatedData.banner || existingTournament.banner,
         isFeatured: validatedData.isFeatured ?? existingTournament.isFeatured,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(tournaments.id, id))
       .returning();
 
@@ -390,14 +390,14 @@ export const registerTeamForTournament = async (req: Request, res: Response, nex
       tournamentId: tournamentId,
       teamId: teamId,
       status: 'registered',
-    });
+    } as any);
 
     // Update current teams count
     await db.update(tournaments)
       .set({
         currentTeams: (tournament.currentTeams || 0) + 1,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(tournaments.id, tournamentId));
 
     res.status(201).json({
@@ -453,7 +453,7 @@ export const updateParticipantStatus = async (req: Request, res: Response, next:
         status: status || null,
         seed: seed || null,
         finalPosition: finalPosition || null,
-      })
+      } as any)
       .where(eq(tournamentParticipants.id, participantId))
       .returning();
 
@@ -498,3 +498,4 @@ export const getTournamentsByStatus = async (req: Request, res: Response, next: 
     next(error);
   }
 }; 
+

@@ -47,19 +47,37 @@ export const getCasters = async (req: Request, res: Response, next: NextFunction
     }
 
     // Get casters with pagination
+    let orderByClause;
+    switch (sortBy) {
+      case 'name':
+        orderByClause = sortOrder === 'desc' ? desc(casters.name) : asc(casters.name);
+        break;
+      case 'rating':
+        orderByClause = sortOrder === 'desc' ? desc(casters.rating) : asc(casters.rating);
+        break;
+      case 'followers':
+        orderByClause = sortOrder === 'desc' ? desc(casters.followers) : asc(casters.followers);
+        break;
+      case 'views':
+        orderByClause = sortOrder === 'desc' ? desc(casters.views) : asc(casters.views);
+        break;
+      default:
+        orderByClause = sortOrder === 'desc' ? desc(casters.createdAt) : asc(casters.createdAt);
+    }
+    
     const castersList = await db.query.casters.findMany({
       where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      orderBy: sortOrder === 'desc' ? desc(casters[sortBy as keyof typeof casters]) : asc(casters[sortBy as keyof typeof casters]),
+      orderBy: orderByClause,
       limit,
       offset,
     });
 
     // Get total count
-    const totalCount = await db.select({ count: casters.id })
+    const totalCount = await db.select({ count: sql`count(*)`.as('count') })
       .from(casters)
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
 
-    const total = totalCount.length;
+    const total = Number(totalCount[0]?.count) || 0;
     const totalPages = Math.ceil(total / limit);
 
     res.json({
@@ -96,7 +114,7 @@ export const getCaster = async (req: Request, res: Response, next: NextFunction)
     await db.update(casters)
       .set({
         views: (caster.views || 0) + 1,
-      })
+      } as any)
       .where(eq(casters.id, id));
 
     res.json({
@@ -125,7 +143,7 @@ export const createCaster = async (req: Request, res: Response, next: NextFuncti
       views: 0,
       rating: 0,
       totalRatings: 0,
-    }).returning();
+    } as any).returning();
 
     res.status(201).json({
       success: true,
@@ -161,7 +179,7 @@ export const updateCaster = async (req: Request, res: Response, next: NextFuncti
       .set({
         ...validatedData,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(casters.id, id))
       .returning();
 
@@ -299,7 +317,7 @@ export const updateLiveStatus = async (req: Request, res: Response, next: NextFu
         isLive,
         currentGame: isLive ? currentGame : null,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(casters.id, id));
 
     res.json({
@@ -345,7 +363,7 @@ export const rateCaster = async (req: Request, res: Response, next: NextFunction
         rating: newRating,
         totalRatings: newTotalRatings,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(casters.id, id));
 
     res.json({

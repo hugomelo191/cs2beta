@@ -15,9 +15,10 @@ const generateToken = (id: string) => {
   if (!jwtSecret) {
     throw new Error('JWT_SECRET not configured');
   }
-  return jwt.sign({ id }, jwtSecret, {
-    expiresIn: process.env['JWT_EXPIRES_IN'] || '7d',
-  });
+  const options: jwt.SignOptions = {
+    expiresIn: '7d',
+  };
+  return jwt.sign({ id }, jwtSecret, options);
 };
 
 // @desc    Register user with mandatory player profile
@@ -77,20 +78,24 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       email: validatedData.email,
       username: validatedData.username,
       password: hashedPassword,
-      firstName: validatedData.firstName,
-      lastName: validatedData.lastName,
+      firstName: validatedData.firstName || null,
+      lastName: validatedData.lastName || null,
       country: faceitData?.country || validatedData.country,
-    }).returning();
+    } as any).returning();
+
+    if (!newUser) {
+      throw new CustomError('Failed to create user', 500);
+    }
 
     // Create mandatory player profile with Faceit data
     const [newPlayer] = await db.insert(players).values({
       userId: newUser.id,
       nickname: validatedData.nickname,
-      realName: validatedData.realName || `${validatedData.firstName} ${validatedData.lastName}`.trim(),
+      realName: validatedData.realName || `${validatedData.firstName || ''} ${validatedData.lastName || ''}`.trim() || null,
       country: faceitData?.country || validatedData.country,
       age: validatedData.age || null,
-      position: validatedData.position,
-      bio: validatedData.bio,
+      position: validatedData.position || null,
+      bio: validatedData.bio || null,
       // Faceit integration
       faceitNickname: faceitData?.faceit_nickname || validatedData.faceitNickname,
       faceitId: faceitData?.faceit_id || null,
@@ -115,7 +120,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
         steam: faceitData?.steam_url,
       },
       avatar: faceitData?.avatar || null,
-    }).returning();
+    } as any).returning();
 
     // Generate token
     const token = generateToken(newUser.id);
@@ -168,7 +173,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
 
     // Update last login
     await db.update(users)
-      .set({ lastLogin: new Date() })
+      .set({ lastLogin: new Date() } as any)
       .where(eq(users.id, user.id));
 
     // Generate token
@@ -240,7 +245,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
         bio,
         country,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(users.id, req.user!.id))
       .returning();
 
@@ -291,7 +296,7 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
       .set({
         password: hashedPassword,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(users.id, req.user!.id));
 
     res.json({

@@ -54,17 +54,17 @@ export const getDrafts = async (req: Request, res: Response, next: NextFunction)
           }
         }
       },
-      orderBy: sortOrder === 'desc' ? desc(drafts[sortBy as keyof typeof drafts]) : asc(drafts[sortBy as keyof typeof drafts]),
+      orderBy: sortOrder === 'desc' ? desc(drafts.createdAt) : asc(drafts.createdAt),
       limit,
       offset,
     });
 
     // Get total count
-    const totalCount = await db.select({ count: drafts.id })
+    const totalCount = await db.select({ count: sql`count(*)`.as('count') })
       .from(drafts)
       .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
 
-    const total = totalCount.length;
+    const total = Number(totalCount[0]?.count) || 0;
     const totalPages = Math.ceil(total / limit);
 
     res.json({
@@ -144,7 +144,7 @@ export const createDraft = async (req: Request, res: Response, next: NextFunctio
       ...validatedData,
       organizerId: currentUser.id,
       currentApplications: 0,
-    }).returning();
+    } as any).returning();
 
     // Get draft with relations
     const draftWithRelations = await db.query.drafts.findFirst({
@@ -200,7 +200,7 @@ export const updateDraft = async (req: Request, res: Response, next: NextFunctio
       .set({
         ...validatedData,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(drafts.id, id))
       .returning();
 
@@ -304,14 +304,14 @@ export const applyToDraft = async (req: Request, res: Response, next: NextFuncti
       experience,
       availability,
       status: 'pending',
-    });
+    } as any);
 
     // Update draft application count
     await db.update(drafts)
       .set({
         currentApplications: draft.currentApplications + 1,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(drafts.id, draftId));
 
     res.json({
@@ -408,7 +408,7 @@ export const updateApplicationStatus = async (req: Request, res: Response, next:
         status,
         feedback,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(draftApplications.id, applicationId));
 
     res.json({
@@ -523,3 +523,4 @@ export const getDraftsByCountry = async (req: Request, res: Response, next: Next
     next(error);
   }
 }; 
+

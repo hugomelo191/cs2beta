@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -20,11 +20,13 @@ import {
   Crown,
   Star,
   Shield,
-  Sword
+  Sword,
+  RefreshCw
 } from 'lucide-react';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { FilterPanel, FilterGroup } from '@/components/ui/FilterPanel';
 import { StatsCard } from '@/components/ui/StatsCard';
+import { useRegisteredTeamsMatches } from '@/hooks/useRegisteredTeamsMatches';
 
 // Enhanced mock data for results
 const mockMatches = [
@@ -287,6 +289,75 @@ export function ResultsPage() {
   const [filters, setFilters] = useState<Record<string, any>>({});
   const [selectedView, setSelectedView] = useState<'live' | 'upcoming' | 'completed'>('live');
   const [expandedMatch, setExpandedMatch] = useState<number | null>(null);
+  
+  // 🔥 NOVO: Hook para dados reais de equipas registadas
+  const { 
+    liveMatches: realLiveMatches, 
+    recentMatches: realRecentMatches, 
+    registeredTeams, 
+    loading, 
+    error, 
+    refreshData 
+  } = useRegisteredTeamsMatches();
+
+  // 🔥 Converter dados reais para formato da UI
+  const convertBackendMatchesToUI = (backendMatches: any[]) => {
+    return backendMatches.map((match, index) => ({
+      id: Math.abs((`real_${match.match_id}_${index}`).split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a;
+      }, 0)),
+      tournament: 'CS2 Liga Portuguesa', // Default - pode ser expandido
+      phase: 'Competição',
+      date: match.started_at ? new Date(match.started_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      time: match.started_at ? new Date(match.started_at).toTimeString().slice(0,5) : '00:00',
+      status: match.status === 'ONGOING' ? 'live' : 'completed',
+      live: match.status === 'ONGOING',
+      featured: false,
+      team1: {
+        name: match.teams.registered_team.nickname,
+        logo: '/logos/default.svg', // Usar logo padrão
+        score: match.current_score?.faction1 || 0,
+        region: 'Portugal', // Assumir Portugal para equipas registadas
+        rank: Math.floor(Math.random() * 10) + 1,
+        rating: 1500 + Math.floor(Math.random() * 500)
+      },
+      team2: {
+        name: match.teams.opponent.nickname,
+        logo: '/logos/default.svg',
+        score: match.current_score?.faction2 || 0,
+        region: 'Internacional',
+        rank: Math.floor(Math.random() * 10) + 1,
+        rating: 1400 + Math.floor(Math.random() * 400)
+      },
+      maps: [
+        { 
+          name: match.map || 'de_dust2', 
+          team1Score: match.current_score?.faction1 || 0,
+          team2Score: match.current_score?.faction2 || 0,
+          duration: match.status === 'ONGOING' ? 'Live' : '45:30',
+          inProgress: match.status === 'ONGOING'
+        }
+      ],
+      mvp: { name: 'TBD', kills: 0, deaths: 0, adr: 0, rating: 0 },
+      viewers: Math.floor(Math.random() * 5000) + 100,
+      highlights: [`Match da equipa registada: ${match.teams.registered_team.nickname}`],
+      prizePool: '€300',
+      isRegisteredTeam: true, // 🔥 Marca especial para equipas registadas
+      faceitUrl: match.faceit_url
+    }));
+  };
+
+  // 🔥 Usar dados reais + fallback para mock se não houver dados
+  const allMatches = useMemo(() => {
+    const realMatches = [
+      ...convertBackendMatchesToUI(realLiveMatches),
+      ...convertBackendMatchesToUI(realRecentMatches)
+    ];
+    
+    // Se não há dados reais, usar mock data como fallback
+    return realMatches.length > 0 ? realMatches : mockMatches;
+  }, [realLiveMatches, realRecentMatches]);
 
   // Intelligent filters
   const intelligentFilters: FilterGroup[] = [
@@ -323,9 +394,9 @@ export function ResultsPage() {
     }
   ];
 
-  // Filter matches
+  // Filter matches (🔥 AGORA COM DADOS REAIS)
   const filteredMatches = useMemo(() => {
-    return mockMatches.filter(match => {
+    return allMatches.filter(match => {
       if (searchQuery && !match.team1.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
           !match.team2.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
           !match.tournament.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -342,12 +413,12 @@ export function ResultsPage() {
       
       return true;
     });
-  }, [searchQuery, filters]);
+  }, [searchQuery, filters, allMatches]);
 
-  const liveMatches = mockMatches.filter(m => m.status === 'live');
-  const upcomingMatches = mockMatches.filter(m => m.status === 'upcoming');
-  const completedMatches = mockMatches.filter(m => m.status === 'completed');
-  const featuredMatch = mockMatches.find(m => m.featured);
+  const liveMatches = allMatches.filter(m => m.status === 'live');
+  const upcomingMatches = allMatches.filter(m => m.status === 'upcoming');
+  const completedMatches = allMatches.filter(m => m.status === 'completed');
+  const featuredMatch = allMatches.find(m => m.featured);
 
   return (
     <main className="pt-16 min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black">
@@ -358,12 +429,58 @@ export function ResultsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl md:text-5xl font-orbitron font-bold gradient-text mb-4">
-            🏆 RESULTADOS 📊
-          </h1>
-          <p className="text-lg text-gray-300 max-w-3xl mx-auto">
-            Todos os resultados da scene ibérica. Partidas ao vivo, próximos jogos e histórico completo.
-          </p>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-4xl md:text-5xl font-orbitron font-bold gradient-text">
+              🏆 RESULTADOS 📊
+            </h1>
+            {/* 🔥 NOVO: Indicador de dados reais */}
+            <button
+              onClick={refreshData}
+              disabled={loading}
+              className="bg-green-500/10 hover:bg-green-500/20 border border-green-400/30 
+                         text-green-400 px-4 py-2 rounded-lg font-semibold transition-all 
+                         duration-300 flex items-center gap-2 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Carregando...' : 'Atualizar'}
+            </button>
+          </div>
+          
+          <div className="text-center mb-4">
+            <p className="text-lg text-gray-300 max-w-3xl mx-auto">
+              Apenas equipas registadas no site. Dados em tempo real via Faceit API.
+            </p>
+            
+            {/* 🔥 Status dos dados */}
+            <div className="flex justify-center items-center gap-6 mt-4">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${
+                  error ? 'bg-red-500' : 
+                  realLiveMatches.length > 0 ? 'bg-green-500 animate-pulse' : 
+                  'bg-yellow-500'
+                }`}></div>
+                <span className="text-sm text-gray-400">
+                  {error ? 'Erro nos dados' : 
+                   realLiveMatches.length > 0 ? `${realLiveMatches.length} matches ao vivo` :
+                   'Sem matches ao vivo'}
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-400" />
+                <span className="text-sm text-gray-400">
+                  {registeredTeams.length} equipas registadas
+                </span>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-purple-400" />
+                <span className="text-sm text-gray-400">
+                  Auto-refresh: 30s
+                </span>
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Live Ticker */}
@@ -377,6 +494,16 @@ export function ResultsPage() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                 <span className="text-red-400 font-semibold">AO VIVO</span>
+                {/* 🔥 Indicador de tipo de dados */}
+                {realLiveMatches.length > 0 ? (
+                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                    DADOS REAIS
+                  </span>
+                ) : (
+                  <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full">
+                    DADOS DEMO
+                  </span>
+                )}
               </div>
               <div className="flex-1 overflow-hidden">
                 <motion.div
@@ -404,27 +531,28 @@ export function ResultsPage() {
         >
           <StatsCard
             title="Partidas Totais"
-            value={mockStats.totalMatches}
+            value={allMatches.length || mockStats.totalMatches}
             icon={<Trophy className="w-5 h-5 text-yellow-400" />}
             trend="up"
             trendValue="+12"
           />
           <StatsCard
             title="Ao Vivo"
-            value={mockStats.liveMatches}
+            value={liveMatches.length}
             icon={<Activity className="w-5 h-5 text-red-400" />}
             gradient
           />
           <StatsCard
-            title="Prize Pool Total"
-            value={mockStats.totalPrizePool}
-            icon={<Award className="w-5 h-5 text-green-400" />}
-            subtitle="Esta época"
+            title="Equipas Registadas"
+            value={registeredTeams.length || mockStats.totalPrizePool}
+            icon={<Users className="w-5 h-5 text-green-400" />}
+            subtitle="No site"
           />
           <StatsCard
-            title="Viewers Totais"
-            value={mockStats.totalViewers}
-            icon={<Eye className="w-5 h-5 text-purple-400" />}
+            title="Dados Reais"
+            value={realLiveMatches.length + realRecentMatches.length > 0 ? '✅ ATIVO' : '❌ DEMO'}
+            icon={<Zap className="w-5 h-5 text-purple-400" />}
+            subtitle="Faceit API"
           />
 
         </motion.div>

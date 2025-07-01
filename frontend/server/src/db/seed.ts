@@ -19,7 +19,7 @@ async function seed() {
       role: 'admin',
       isVerified: true,
       country: 'pt'
-    }).returning();
+    } as any).returning();
 
     console.log('✅ Admin user created');
 
@@ -33,7 +33,7 @@ async function seed() {
       role: 'user',
       isVerified: true,
       country: 'pt'
-    }).returning();
+    } as any).returning();
 
     const [user2] = await db.insert(users).values({
       email: 'player2@cs2hub.pt',
@@ -44,7 +44,7 @@ async function seed() {
       role: 'user',
       isVerified: true,
       country: 'pt'
-    }).returning();
+    } as any).returning();
 
     console.log('✅ Regular users created');
 

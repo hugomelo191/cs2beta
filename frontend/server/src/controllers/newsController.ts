@@ -45,10 +45,28 @@ export const getNews = async (req: Request, res: Response, next: NextFunction) =
     // Only show published news
     whereConditions.push(eq(news.isPublished, true));
 
-    // Get news with pagination
+    // Get news with pagination - safe ordering
+    let orderByClause;
+    switch (sortBy) {
+      case 'createdAt':
+        orderByClause = sortOrder === 'desc' ? desc(news.createdAt) : asc(news.createdAt);
+        break;
+      case 'publishedAt':
+        orderByClause = sortOrder === 'desc' ? desc(news.publishedAt) : asc(news.publishedAt);
+        break;
+      case 'views':
+        orderByClause = sortOrder === 'desc' ? desc(news.views) : asc(news.views);
+        break;
+      case 'title':
+        orderByClause = sortOrder === 'desc' ? desc(news.title) : asc(news.title);
+        break;
+      default:
+        orderByClause = desc(news.createdAt);
+    }
+
     const newsList = await db.query.news.findMany({
       where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      orderBy: sortOrder === 'desc' ? desc(news[sortBy as keyof typeof news]) : asc(news[sortBy as keyof typeof news]),
+      orderBy: orderByClause,
       limit,
       offset,
     });
@@ -92,7 +110,7 @@ export const getNewsArticle = async (req: Request, res: Response, next: NextFunc
     }
 
     // Check if article is published (unless admin)
-    if (!newsArticle.isPublished && !(req as any).user?.role === 'admin') {
+    if (!newsArticle.isPublished && (req as any).user?.role !== 'admin') {
       throw new CustomError('News article not found', 404);
     }
 
@@ -100,7 +118,7 @@ export const getNewsArticle = async (req: Request, res: Response, next: NextFunc
     await db.update(news)
       .set({
         views: (newsArticle.views || 0) + 1,
-      })
+      } as any)
       .where(eq(news.id, id));
 
     res.json({
@@ -136,7 +154,7 @@ export const createNews = async (req: Request, res: Response, next: NextFunction
       readTime,
       views: 0,
       publishedAt: validatedData.isPublished ? new Date() : null,
-    }).returning();
+    } as any).returning();
 
     res.status(201).json({
       success: true,
@@ -187,7 +205,7 @@ export const updateNews = async (req: Request, res: Response, next: NextFunction
         readTime,
         publishedAt,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(news.id, id))
       .returning();
 
@@ -375,7 +393,7 @@ export const publishNews = async (req: Request, res: Response, next: NextFunctio
         isPublished: true,
         publishedAt: new Date(),
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(news.id, id));
 
     res.json({
@@ -409,7 +427,7 @@ export const unpublishNews = async (req: Request, res: Response, next: NextFunct
         isPublished: false,
         publishedAt: null,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(news.id, id));
 
     res.json({

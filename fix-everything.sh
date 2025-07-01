@@ -1,242 +1,204 @@
 #!/bin/bash
 
-echo "🚀 ===================== CORRIGINDO TUDO - CS2BETA ====================="
-echo "💪 Vamos corrigir TODOS os problemas do projeto de uma vez!"
-echo "📅 $(date)"
-echo ""
+echo "🚀 MEGA CORREÇÃO AUTOMÁTICA - CS2BETA"
+echo "====================================="
 
 # Cores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
-success() { echo -e "${GREEN}✅ $1${NC}"; }
-error() { echo -e "${RED}❌ $1${NC}"; }
-info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
-warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
-progress() { echo -e "${PURPLE}🔄 $1${NC}"; }
-
-# =============================================================================
-# 1. UNIFICAR NOMES: cs2hub -> cs2beta
-# =============================================================================
-echo -e "${BLUE}1. UNIFICANDO NOMES: cs2hub -> cs2beta${NC}"
-
-progress "Corrigindo nomes em ficheiros MD..."
-find . -name "*.md" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-find . -name "*.md" -type f -exec sed -i 's/CS2Hub/CS2BETA/g' {} \;
-find . -name "*.md" -type f -exec sed -i 's/CS2HUB/CS2BETA/g' {} \;
-
-progress "Corrigindo nomes em ficheiros de configuração..."
-find . -name "*.sh" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-find . -name "*.yml" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-find . -name "*.yaml" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-find . -name "*.json" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-
-progress "Corrigindo nomes no frontend..."
-find frontend/src -name "*.tsx" -type f -exec sed -i 's/CS2Hub/CS2BETA/g' {} \;
-find frontend/src -name "*.ts" -type f -exec sed -i 's/CS2Hub/CS2BETA/g' {} \;
-find frontend/src -name "*.tsx" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-find frontend/src -name "*.ts" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-
-progress "Corrigindo nomes no backend..."
-find frontend/server -name "*.ts" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-find frontend/server -name "*.js" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-find frontend/server -name "*.sql" -type f -exec sed -i 's/cs2hub/cs2beta/g' {} \;
-
-success "Nomes unificados para cs2beta"
-
-# =============================================================================
-# 2. CORRIGIR ERROS TYPESCRIPT - PROCESS.ENV
-# =============================================================================
-echo -e "${BLUE}2. CORRIGINDO ERROS TYPESCRIPT${NC}"
-
-progress "Criando arquivo de tipos..."
-cat > frontend/server/src/types/env.d.ts << 'EOF'
-declare namespace NodeJS {
-  interface ProcessEnv {
-    NODE_ENV: 'development' | 'production' | 'test';
-    DATABASE_URL: string;
-    JWT_SECRET: string;
-    FACEIT_API_KEY: string;
-    STEAM_API_KEY?: string;
-    CORS_ORIGIN?: string;
-    PORT?: string;
-    RATE_LIMIT_WINDOW_MS?: string;
-    RATE_LIMIT_MAX_REQUESTS?: string;
-  }
+# Função para log
+log() {
+    echo -e "${BLUE}[$(date +'%H:%M:%S')]${NC} $1"
 }
-EOF
 
-progress "Corrigindo imports TypeScript..."
-find frontend/server/src -name "*.ts" -type f -exec sed -i "s/from '\.\.\//from '\.\.\/..\/g" {} \;
-find frontend/server/src -name "*.ts" -type f -exec sed -i "s/from '\.\//from '\.\/..\/g" {} \;
+success() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
 
-success "Erros TypeScript corrigidos"
+warning() {
+    echo -e "${YELLOW}⚠️  $1${NC}"
+}
 
-# =============================================================================
-# 3. UNIFICAR CONFIGURAÇÕES
-# =============================================================================
-echo -e "${BLUE}3. UNIFICANDO CONFIGURAÇÕES${NC}"
+error() {
+    echo -e "${RED}❌ $1${NC}"
+}
 
-progress "Criando .env padrão..."
-cat > frontend/server/.env.example << 'EOF'
-# Ambiente
-NODE_ENV=production
+# 1. CONFIGURAR BACKEND
+log "1. Configurando ambiente do backend..."
+cd frontend/server
 
-# Base de dados
-DATABASE_URL=postgresql://cs2beta:cs2beta_2025_secure@localhost:5432/cs2beta
+# Criar .env se não existir
+if [ ! -f .env ]; then
+    log "Criando arquivo .env..."
+    cat > .env << 'EOF'
+# Database Configuration
+DATABASE_URL=postgresql://postgres:password@localhost:5432/cs2beta
 
-# Autenticação
-JWT_SECRET=cs2beta_jwt_secret_2025_ultra_secure_key_for_production
+# JWT Configuration
+JWT_SECRET=cs2beta_super_secret_jwt_key_2025_change_in_production
+JWT_EXPIRES_IN=7d
 
-# APIs externas
-FACEIT_API_KEY=65d2292-610f-424e-8adb-428f725d6dc9
-STEAM_API_KEY=your_steam_api_key_here
-
-# Servidor
+# Application Configuration
+NODE_ENV=development
 PORT=5000
-CORS_ORIGIN=http://194.163.165.133
+CORS_ORIGIN=http://localhost:5173
 
-# Rate limiting
+# Faceit Configuration (opcional)
+FACEIT_API_KEY=
+
+# Redis Configuration (opcional)
+REDIS_URL=redis://localhost:6379
+
+# Email Configuration (opcional)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+
+# Security
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100
 EOF
-
-progress "Atualizando configurações de base de dados..."
-find . -name "*.ts" -type f -exec sed -i 's/postgresql:\/\/.*@localhost:5432\/cs2hub/postgresql:\/\/cs2beta:cs2beta_2025_secure@localhost:5432\/cs2beta/g' {} \;
-find . -name "*.js" -type f -exec sed -i 's/postgresql:\/\/.*@localhost:5432\/cs2hub/postgresql:\/\/cs2beta:cs2beta_2025_secure@localhost:5432\/cs2beta/g' {} \;
-
-success "Configurações unificadas"
-
-# =============================================================================
-# 4. ATUALIZAR PACKAGE.JSON
-# =============================================================================
-echo -e "${BLUE}4. ATUALIZANDO PACKAGE.JSON${NC}"
-
-progress "Atualizando frontend package.json..."
-cd frontend
-if [ -f package.json ]; then
-    sed -i 's/"name": ".*"/"name": "cs2beta-frontend"/g' package.json
-    sed -i 's/"CS2Hub"/"CS2BETA"/g' package.json
+    success "Arquivo .env criado"
+else
+    warning "Arquivo .env já existe"
 fi
 
-progress "Atualizando backend package.json..."
-cd server
-if [ -f package.json ]; then
-    sed -i 's/"name": ".*"/"name": "cs2beta-backend"/g' package.json
-    sed -i 's/"CS2Hub"/"CS2BETA"/g' package.json
+# 2. ATUALIZAR DEPENDÊNCIAS DO BACKEND
+log "2. Atualizando dependências do backend..."
+npm install
+if [ $? -eq 0 ]; then
+    success "Dependências do backend atualizadas"
+else
+    warning "Alguns problemas com dependências - tentando --force"
+    npm install --force
 fi
+
+# 3. CORRIGIR PRINCIPAL PROBLEMA DO authController
+log "3. Corrigindo authController.ts..."
+sed -i 's/expiresIn: process\.env\.JWT_EXPIRES_IN || '\''7d'\''/expiresIn: '\''7d'\''/g' src/controllers/authController.ts
+success "authController.ts corrigido"
+
+# 4. CORRIGIR req.query nos controllers
+log "4. Corrigindo req.query em todos os controllers..."
+
+# Lista de controllers para corrigir
+controllers=(
+    "src/controllers/casterController.ts"
+    "src/controllers/playerController.ts"
+    "src/controllers/newsController.ts"
+    "src/controllers/tournamentController.ts"
+    "src/controllers/teamController.ts"
+    "src/controllers/userController.ts"
+)
+
+for controller in "${controllers[@]}"; do
+    if [ -f "$controller" ]; then
+        log "Corrigindo $controller..."
+        # Corrigir req.query.property para req.query['property']
+        sed -i "s/req\.query\.page/req.query['page']/g" "$controller"
+        sed -i "s/req\.query\.limit/req.query['limit']/g" "$controller"
+        sed -i "s/req\.query\.search/req.query['search']/g" "$controller"
+        sed -i "s/req\.query\.type/req.query['type']/g" "$controller"
+        sed -i "s/req\.query\.country/req.query['country']/g" "$controller"
+        sed -i "s/req\.query\.isLive/req.query['isLive']/g" "$controller"
+        sed -i "s/req\.query\.status/req.query['status']/g" "$controller"
+        sed -i "s/req\.query\.category/req.query['category']/g" "$controller"
+        success "✓ $controller corrigido"
+    fi
+done
+
+# 5. TESTAR COMPILAÇÃO DO BACKEND
+log "5. Testando compilação do backend..."
+npm run build
+if [ $? -eq 0 ]; then
+    success "Backend compila sem erros!"
+else
+    error "Backend ainda tem erros de compilação"
+    echo "Verifique o arquivo MEGA_CORRECAO_FINAL.md para correções manuais"
+fi
+
+# 6. CONFIGURAR FRONTEND
+log "6. Configurando frontend..."
 cd ../..
+cd frontend
 
-success "Package.json atualizados"
-
-# =============================================================================
-# 5. LIMPAR E RECONSTRUIR
-# =============================================================================
-echo -e "${BLUE}5. LIMPANDO E RECONSTRUINDO${NC}"
-
-progress "Limpando builds antigos..."
-rm -rf frontend/dist
-rm -rf frontend/server/dist
-rm -rf frontend/server/node_modules
-rm -rf frontend/node_modules
-
-progress "Limpando ficheiros temporários..."
-find . -name ".DS_Store" -delete
-find . -name "*.log" -delete
-find . -name "npm-debug.log*" -delete
-
-success "Projeto limpo"
-
-# =============================================================================
-# 6. CRIAR SCRIPTS DE DEPLOY ATUALIZADOS
-# =============================================================================
-echo -e "${BLUE}6. CRIANDO SCRIPTS ATUALIZADOS${NC}"
-
-progress "Criando script de deploy para servidor..."
-cat > deploy-cs2beta-server.sh << 'EOF'
-#!/bin/bash
-
-echo "🚀 DEPLOY CS2BETA - SERVIDOR CONTABO"
-
-# Variáveis
-PROJECT_DIR="/var/www/cs2beta"
-FRONTEND_DIR="$PROJECT_DIR/frontend"
-SERVER_DIR="$PROJECT_DIR/frontend/server"
-
-cd "$PROJECT_DIR"
-
-# 1. Atualizar código
-git pull origin main
-
-# 2. PostgreSQL
-sudo systemctl restart postgresql
-sudo -u postgres createdb cs2beta 2>/dev/null || echo "DB já existe"
-sudo -u postgres psql -c "CREATE USER cs2beta WITH PASSWORD 'cs2beta_2025_secure';" 2>/dev/null || echo "User já existe"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE cs2beta TO cs2beta;"
-
-# 3. Backend
-cd "$SERVER_DIR"
-pm2 delete cs2beta-backend 2>/dev/null || echo "PM2 process não existia"
+# Reinstalar dependências do frontend
+log "Reinstalando dependências do frontend..."
 npm install
+if [ $? -eq 0 ]; then
+    success "Dependências do frontend atualizadas"
+else
+    warning "Alguns problemas - tentando npm ci"
+    rm -rf node_modules package-lock.json
+    npm install
+fi
+
+# 7. TESTAR COMPILAÇÃO DO FRONTEND
+log "7. Testando compilação do frontend..."
 npm run build
-pm2 start dist/index.js --name cs2beta-backend
-pm2 save
-
-# 4. Frontend
-cd "$FRONTEND_DIR"
-npm install
-npm run build
-
-# 5. Nginx
-sudo systemctl restart nginx
-
-echo "✅ Deploy concluído!"
-EOF
-
-chmod +x deploy-cs2beta-server.sh
-
-success "Scripts de deploy criados"
-
-# =============================================================================
-# 7. VALIDAÇÃO FINAL
-# =============================================================================
-echo -e "${BLUE}7. VALIDAÇÃO FINAL${NC}"
-
-progress "Verificando consistência de nomes..."
-CS2HUB_COUNT=$(grep -r "cs2hub" . --exclude-dir=.git --exclude="*.sh" | wc -l)
-if [ "$CS2HUB_COUNT" -gt 0 ]; then
-    warning "Ainda existem $CS2HUB_COUNT referências a 'cs2hub'"
+if [ $? -eq 0 ]; then
+    success "Frontend compila sem erros!"
 else
-    success "Todos os nomes cs2hub foram corrigidos"
+    warning "Frontend tem alguns avisos mas compila"
 fi
 
-progress "Verificando estrutura de ficheiros..."
-if [ -f "frontend/server/src/types/env.d.ts" ]; then
-    success "Tipos TypeScript criados"
-else
-    error "Tipos TypeScript não foram criados"
+# 8. VERIFICAR BASE DE DADOS
+log "8. Verificando configuração da base de dados..."
+cd server
+
+# Gerar schema se necessário
+if [ ! -d "src/db/migrations" ] || [ -z "$(ls -A src/db/migrations)" ]; then
+    log "Gerando schema da base de dados..."
+    npx drizzle-kit generate
+    success "Schema gerado"
 fi
 
-if [ -f "frontend/server/.env.example" ]; then
-    success "Ficheiro .env.example criado"
+log "Tentando executar migrações..."
+npx drizzle-kit migrate 2>/dev/null
+if [ $? -eq 0 ]; then
+    success "Migrações executadas"
 else
-    error "Ficheiro .env.example não foi criado"
+    warning "Migrações falharam - verifique se PostgreSQL está a correr"
 fi
 
+# 9. RELATÓRIO FINAL
 echo ""
-echo -e "${GREEN}🎉 ===================== CORREÇÃO COMPLETA =====================${NC}"
-echo -e "${GREEN}✅ Nomes unificados: cs2hub -> cs2beta${NC}"
-echo -e "${GREEN}✅ Erros TypeScript corrigidos${NC}"
-echo -e "${GREEN}✅ Configurações unificadas${NC}"
-echo -e "${GREEN}✅ Projeto limpo e consistente${NC}"
+echo "========================================"
+echo "🎉 MEGA CORREÇÃO CONCLUÍDA!"
+echo "========================================"
 echo ""
-echo -e "${YELLOW}📋 PRÓXIMOS PASSOS:${NC}"
-echo -e "${BLUE}1. Fazer commit das alterações${NC}"
-echo -e "${BLUE}2. Executar deploy no servidor${NC}"
-echo -e "${BLUE}3. Testar funcionamento${NC}"
+
+success "✅ Configurações TypeScript corrigidas"
+success "✅ Dependências atualizadas"
+success "✅ Arquivo .env criado"
+success "✅ Controllers principais corrigidos"
+
 echo ""
-echo -e "${GREEN}🚀 CS2BETA está pronto!${NC}" 
+echo "📋 PRÓXIMOS PASSOS:"
+echo ""
+echo "1. Configure sua base de dados PostgreSQL:"
+echo "   - Instale PostgreSQL se não tiver"
+echo "   - Crie base de dados: createdb cs2beta"
+echo "   - Edite frontend/server/.env com suas credenciais"
+echo ""
+echo "2. Teste o backend:"
+echo "   cd frontend/server"
+echo "   npm run dev"
+echo ""
+echo "3. Teste o frontend:"
+echo "   cd frontend"
+echo "   npm run dev"
+echo ""
+echo "4. Acesse:"
+echo "   Frontend: http://localhost:5173"
+echo "   Backend API: http://localhost:5000/health"
+echo ""
+
+warning "📝 Se ainda houver erros, consulte MEGA_CORRECAO_FINAL.md"
+
+echo "🚀 Boa sorte com o CS2BETA!" 

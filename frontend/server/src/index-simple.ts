@@ -6,17 +6,18 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
+import { liveUpdateService } from './services/liveUpdateService.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const server = createServer(app);
-const io = new Server(server, {
+const io = new SocketIOServer(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST"]
   }
 });
@@ -28,7 +29,7 @@ app.use(morgan('combined'));
 
 // CORS
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
 
@@ -56,7 +57,7 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    message: 'CS2Hub Backend está a funcionar!'
+    websocket: 'Active'
   });
 });
 
@@ -81,7 +82,7 @@ app.get('/api/games/live', async (req, res) => {
   }
 });
 
-app.get('/api/games/team/:teamId/stats', async (req, res) => {
+app.get('/api/games/team/:teamId/stats', async (req, res, next) => {
   try {
     const teamId = req.params.teamId;
     
@@ -118,10 +119,7 @@ app.get('/api/games/team/:teamId/stats', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao obter estatísticas da equipa'
-    });
+    next(error);
   }
 });
 
@@ -145,7 +143,7 @@ app.get('/api/teams', async (req, res) => {
   }
 });
 
-app.get('/api/teams/:id', async (req, res) => {
+app.get('/api/teams/:id', async (req, res, next) => {
   try {
     const teamId = req.params.id;
     
@@ -175,10 +173,7 @@ app.get('/api/teams/:id', async (req, res) => {
       data: team
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao obter equipa'
-    });
+    next(error);
   }
 });
 
@@ -211,7 +206,7 @@ app.get('/api/players', async (req, res) => {
   }
 });
 
-app.get('/api/players/:id', async (req, res) => {
+app.get('/api/players/:id', async (req, res, next) => {
   try {
     const playerId = req.params.id;
     
@@ -245,26 +240,33 @@ app.get('/api/players/:id', async (req, res) => {
       data: player
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Erro ao obter jogador'
-    });
+    next(error);
   }
 });
 
 // WebSocket events
 io.on('connection', (socket) => {
-  console.log('Cliente conectado:', socket.id);
+  console.log(`🔗 Cliente conectado: ${socket.id}`);
 
-  socket.on('disconnect', () => {
-    console.log('Cliente desconectado:', socket.id);
+  // Join specific rooms for live updates
+  socket.on('join-live-matches', () => {
+    socket.join('live-matches');
+    console.log(`📺 Cliente ${socket.id} entrou na sala de matches em direto`);
   });
 
-  // Enviar dados iniciais - lista vazia para jogos (implementar quando existir tabela de jogos)
-  socket.emit('liveGamesUpdate', {
-    type: 'liveGamesUpdate',
-    games: [],
-    timestamp: new Date()
+  socket.on('join-player-updates', (playerId: string) => {
+    socket.join(`player-${playerId}`);
+    console.log(`👤 Cliente ${socket.id} a seguir jogador ${playerId}`);
+  });
+
+  socket.on('join-team-updates', (teamId: string) => {
+    socket.join(`team-${teamId}`);
+    console.log(`🏆 Cliente ${socket.id} a seguir equipa ${teamId}`);
+  });
+
+  // Leave rooms when disconnecting
+  socket.on('disconnect', () => {
+    console.log(`❌ Cliente desconectado: ${socket.id}`);
   });
 });
 
@@ -290,19 +292,31 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Endpoint não encontrado'
+    error: 'Route não encontrada'
   });
 });
 
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Servidor CS2Hub a correr na porta ${PORT}`);
-  console.log(`📡 API disponível em: http://localhost:${PORT}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-  console.log(`🎮 Jogos ao vivo: http://localhost:${PORT}/api/games/live`);
-  console.log(`🏆 Equipas: http://localhost:${PORT}/api/teams`);
-  console.log(`👤 Jogadores: http://localhost:${PORT}/api/players`);
+  let redisStatus = 'Redis não disponível - usando cache em memória';
+  
+  console.log('🚀 Servidor CS2Hub a correr na porta', PORT);
+  console.log('📡 API disponível em: http://localhost:' + PORT);
+  console.log('🔗 Health check: http://localhost:' + PORT + '/health');
+  console.log('🔌 WebSocket ativo para updates em tempo real');
+  console.log('🎮 Jogos ao vivo: http://localhost:' + PORT + '/api/games/live');
+  console.log('🏆 Equipas: http://localhost:' + PORT + '/api/teams');
+  console.log('👤 Jogadores: http://localhost:' + PORT + '/api/players');
+  console.log('⚡ Matches em direto: http://localhost:' + PORT + '/api/games/matches/live');
+  console.log('📊 Rankings PT: http://localhost:' + PORT + '/api/games/rankings/portugal');
+  console.log(redisStatus);
+
+  // 🔥 Iniciar serviços de Live Updates FILTRADOS
+  liveUpdateService.startLiveMatchesMonitoring();
+  liveUpdateService.startTemporaryDataCleanup();
+  console.log('🔴 Sistema de updates em tempo real ativo (APENAS EQUIPAS REGISTADAS)');
+  console.log('🧹 Limpeza automática de dados temporários ativa');
 });
 
 export { io }; 
