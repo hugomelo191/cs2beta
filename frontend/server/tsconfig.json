@@ -45,7 +45,8 @@
     "node_modules",
     "dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "**/__tests__/**"
   ],
   "ts-node": {
     "esm": true,
