@@ -34,13 +34,13 @@ class RegisteredTeamsService {
       const registeredTeams = await db
         .select()
         .from(teams as any)
-        .leftJoin(players as any, eq(teams.id, players.team_id as any))
-        .where(eq(teams.active, true) as any);
+        .leftJoin(players as any, eq(teams.id, players.teamId as any))
+        .where(eq(teams.isActive, true) as any);
 
       // Agrupar jogadores por equipa
       const teamsMap = new Map<string, RegisteredTeam>();
 
-      for (const row of registeredTeams) {
+      for (const row of registeredTeams as any[]) {
         const team = row.teams;
         const player = row.players;
 
@@ -48,7 +48,7 @@ class RegisteredTeamsService {
           teamsMap.set(team.id, {
             id: team.id,
             name: team.name,
-            faceit_team_id: team.faceit_team_id,
+            faceit_team_id: team.faceitTeamId,
             faceit_players: [],
             players: []
           });
@@ -60,13 +60,13 @@ class RegisteredTeamsService {
           teamData.players.push({
             id: player.id,
             nickname: player.nickname,
-            faceit_id: player.faceit_id,
-            faceit_nickname: player.faceit_nickname
+            faceit_id: player.faceitId,
+            faceit_nickname: player.faceitNickname
           });
 
           // Adicionar Faceit ID se disponível
-          if (player.faceit_id) {
-            teamData.faceit_players.push(player.faceit_id);
+          if (player.faceitId) {
+            teamData.faceit_players.push(player.faceitId);
           }
         }
       }
@@ -220,7 +220,7 @@ class RegisteredTeamsService {
     if (!team.players || team.players.length === 0) return false;
     
     return team.players.some((player: any) => 
-      registeredPlayerIds.includes(player.player_id)
+      registeredPlayerIds.includes(player.faceitId)
     );
   }
 

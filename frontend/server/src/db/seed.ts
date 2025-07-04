@@ -65,7 +65,7 @@ async function seed() {
         'Campeões Winter Championship 2023',
         'Finalistas Iberian Cup 2024'
       ]
-    }).returning();
+    } as any).returning();
 
     const [team2] = await db.insert(teams).values({
       name: 'Madrid Kings',
@@ -83,7 +83,7 @@ async function seed() {
         'Finalistas Winter Championship 2023',
         'Campeões Madrid Cup 2024'
       ]
-    }).returning();
+    } as any).returning();
 
     console.log('✅ Teams created');
 
@@ -142,7 +142,7 @@ async function seed() {
           twitter: 'https://twitter.com/madrid'
         }
       }
-    ]);
+    ] as any);
 
     console.log('✅ Players created');
 
@@ -181,7 +181,7 @@ async function seed() {
         country: 'pt',
         isFeatured: false
       }
-    ]);
+    ] as any);
 
     console.log('✅ Tournaments created');
 
@@ -201,19 +201,19 @@ async function seed() {
         publishedAt: new Date()
       },
       {
-        title: 'Madrid Kings Anunciam Nova Lineup para 2024',
-        excerpt: 'A equipa espanhola Madrid Kings revelou a sua nova formação com jogadores promissores da scene local.',
-        content: 'A Madrid Kings, uma das equipas mais promissoras da scene espanhola, anunciou hoje a sua nova lineup para 2024. A equipa, que tem vindo a crescer consistentemente nos últimos anos...',
-        author: 'Carlos Rodriguez',
+        title: 'Lusitano Five Vence Winter Championship 2023',
+        excerpt: 'Equipa portuguesa conquista o título de inverno com performance dominante.',
+        content: 'A Lusitano Five conquistou o Winter Championship 2023 com uma performance dominante, vencendo todas as partidas da fase eliminatória...',
+        author: 'CS2Hub Team',
         category: 'team',
-        tags: ['Madrid Kings', 'Equipa', 'Lineup'],
+        tags: ['Lusitano Five', 'Winter Championship', 'Vitória'],
         views: 8920,
         readTime: 3,
         isPublished: true,
         isFeatured: false,
         publishedAt: new Date()
       }
-    ]);
+    ] as any);
 
     console.log('✅ News created');
 
@@ -221,41 +221,41 @@ async function seed() {
     await db.insert(casters).values([
       {
         userId: adminUser.id,
-        name: 'Pedro "CastMaster" Silva',
+        name: 'Nuno Costa',
         type: 'caster',
-        specialty: 'CS2',
+        specialty: 'Analista Principal',
         country: 'pt',
         languages: ['pt', 'en'],
-        followers: 5000,
+        followers: 15420,
         rating: 4.8,
-        experience: '5+ anos',
-        bio: 'Caster veterano com mais de 5 anos de experiência na scene ibérica',
+        experience: '5 anos',
+        bio: 'Analista principal da scene portuguesa de CS2',
         socials: {
-          twitch: 'https://twitch.tv/castmaster',
-          youtube: 'https://youtube.com/castmaster',
-          discord: 'castmaster#1234'
+          twitch: 'https://twitch.tv/nunocosta',
+          youtube: 'https://youtube.com/nunocosta',
+          discord: 'nunocosta#1234'
         },
         isLive: false
       },
       {
-        name: 'Maria "StreamQueen" Santos',
+        userId: user1.id,
+        name: 'Maria Santos',
         type: 'streamer',
-        specialty: 'CS2',
-        country: 'pt',
-        languages: ['pt', 'es'],
-        followers: 12000,
-        rating: 4.9,
-        experience: '3+ anos',
-        bio: 'Streamer popular com boa audiência e conteúdo de qualidade',
+        specialty: 'Streamer',
+        country: 'es',
+        languages: ['es', 'en'],
+        followers: 8920,
+        rating: 4.5,
+        experience: '3 anos',
+        bio: 'Streamer espanhola especializada em CS2',
         socials: {
-          twitch: 'https://twitch.tv/streamqueen',
-          youtube: 'https://youtube.com/streamqueen',
-          discord: 'streamqueen#5678'
+          twitch: 'https://twitch.tv/mariasantos',
+          youtube: 'https://youtube.com/mariasantos',
+          discord: 'mariasantos#5678'
         },
-        isLive: true,
-        currentGame: 'CS2'
+        isLive: true
       }
-    ]);
+    ] as any);
 
     console.log('✅ Casters created');
 

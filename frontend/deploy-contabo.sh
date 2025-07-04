@@ -47,9 +47,9 @@ fi
 
 # Verificar se as variáveis críticas estão definidas
 log "Verificando configurações..."
-if ! grep -q "VITE_API_URL=https://" .env; then
-    error "VITE_API_URL deve estar configurado com https:// no arquivo .env"
-    echo "Exemplo: VITE_API_URL=https://seudominio.com/api"
+if ! grep -q "VITE_API_URL=http://" .env; then
+    error "VITE_API_URL deve estar configurado com http:// no arquivo .env"
+    echo "Exemplo: VITE_API_URL=http://SEU_IP_DO_SERVIDOR/api"
     exit 1
 fi
 
@@ -126,7 +126,7 @@ echo "🎉 DEPLOY CONCLUÍDO!"
 echo "==================="
 echo ""
 echo "🌐 URLs:"
-echo "   Frontend: http://localhost (ou seu domínio)"
+echo "   Frontend: http://localhost (ou http://SEU_IP_DO_SERVIDOR)"
 echo "   Backend: http://localhost:5000"
 echo "   Drizzle Studio: http://localhost:4983"
 echo ""
@@ -134,9 +134,9 @@ echo "🔧 Verificar logs:"
 echo "   docker-compose logs -f"
 echo ""
 echo "📋 Próximos passos:"
-echo "   1. Configurar SSL/HTTPS se ainda não feito"
+echo "   1. Aceder ao frontend via http://SEU_IP_DO_SERVIDOR"
 echo "   2. Verificar se o Draft page agora funciona"
-echo "   3. Configurar domínio se necessário"
+echo "   3. Configurar domínio mais tarde se necessário"
 echo ""
 
 log "✅ Deploy no Contabo concluído!" 

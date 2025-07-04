@@ -146,14 +146,13 @@ export const getPlayer = async (req: Request, res: Response, next: NextFunction)
     }
 
     // Increment views if stats exist
-    if (player.stats) {
-      const currentViews = (player.stats as any).views || 0;
+    if (player.stats && typeof player.stats === 'object') {
+      const currentStats: Record<string, any> = { ...player.stats };
+      const currentViews = currentStats.views || 0;
+      currentStats.views = currentViews + 1;
       await db.update(players)
         .set({
-          stats: {
-            ...player.stats,
-            views: currentViews + 1
-          }
+          stats: JSON.parse(JSON.stringify(currentStats))
         } as any)
         .where(eq(players.id, id));
     }
@@ -187,17 +186,17 @@ export const createPlayer = async (req: Request, res: Response, next: NextFuncti
     // Create player
     const [newPlayer] = await db.insert(players).values({
       ...validatedData,
-      stats: {
+      stats: JSON.parse(JSON.stringify({
         kd: 0,
         adr: 0,
         maps_played: 0,
         wins: 0,
         losses: 0,
         views: 0,
-      },
+      })),
       achievements: [],
       socials: validatedData.socials || {},
-    }).returning();
+    } as any).returning();
 
     // Get player with relations
     const playerWithRelations = await db.query.players.findFirst({
@@ -414,20 +413,24 @@ export const updatePlayerStats = async (req: Request, res: Response, next: NextF
     }
 
     // Update stats
-    const currentStats = existingPlayer.stats || {};
-    const updatedStats = {
+    const currentStats: Record<string, any> = existingPlayer.stats || {};
+    const updatedStats: Record<string, any> = {
       ...currentStats,
-      kd: kd !== undefined ? kd : (currentStats as any).kd,
-      adr: adr !== undefined ? adr : (currentStats as any).adr,
-      maps_played: maps_played !== undefined ? maps_played : (currentStats as any).maps_played,
-      wins: wins !== undefined ? wins : (currentStats as any).wins,
-      losses: losses !== undefined ? losses : (currentStats as any).losses,
+      kd: kd !== undefined ? kd : currentStats.kd,
+      adr: adr !== undefined ? adr : currentStats.adr,
+      maps_played: maps_played !== undefined ? maps_played : currentStats.maps_played,
+      wins: wins !== undefined ? wins : currentStats.wins,
+      losses: losses !== undefined ? losses : currentStats.losses,
     };
 
-    await db.update(players)
+    // Update player stats
+    const [updatedPlayer] = await db.update(players)
       .set({
-        stats: updatedStats,
-        updatedAt: new Date(),
+        stats: JSON.parse(JSON.stringify({
+          ...currentStats,
+          ...updatedStats,
+        })),
+        updatedAt: new Date()
       } as any)
       .where(eq(players.id, id));
 
@@ -495,7 +498,7 @@ export const getPlayerHistory = async (req: Request, res: Response, next: NextFu
     const playersResult = await db
       .select()
       .from(players as any)
-      .where(eq(players.id, parseInt(id)));
+      .where(eq(players.id, id));
 
     if (playersResult.length === 0) {
       return res.status(404).json({
@@ -578,7 +581,7 @@ export const getPlayerLiveMatches = async (req: Request, res: Response, next: Ne
     const playersResult = await db
       .select()
       .from(players as any)
-      .where(eq(players.id, parseInt(id)));
+      .where(eq(players.id, id));
 
     if (playersResult.length === 0) {
       return res.status(404).json({
@@ -640,7 +643,7 @@ export const syncPlayerFaceit = async (req: Request, res: Response, next: NextFu
     const playersResult = await db
       .select()
       .from(players as any)
-      .where(eq(players.id, parseInt(id)));
+      .where(eq(players.id, id));
 
     if (playersResult.length === 0) {
       return res.status(404).json({
@@ -677,7 +680,7 @@ export const syncPlayerFaceit = async (req: Request, res: Response, next: NextFu
         faceit_level: faceitData.faceit_level,
         updated_at: new Date()
       } as any)
-      .where(eq(players.id, parseInt(id)));
+      .where(eq(players.id, id));
 
     res.json({
       success: true,

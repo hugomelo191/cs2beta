@@ -114,7 +114,7 @@ export const createTeam = async (req: Request, res: Response, next: NextFunction
       founded: validatedData.founded || null,
       website: validatedData.website || null,
       socials: validatedData.socials || {},
-    }).returning();
+    } as any).returning();
 
     if (!newTeam) {
       throw new CustomError('Failed to create team', 500);
@@ -351,7 +351,7 @@ export const createTeamWithUser = async (req: Request, res: Response, next: Next
       founded: validatedData.founded || null,
       website: validatedData.website || null,
       socials: validatedData.socials || {},
-    }).returning();
+    } as any).returning();
 
     if (!newTeam) {
       throw new CustomError('Failed to create team', 500);
