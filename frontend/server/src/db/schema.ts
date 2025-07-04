@@ -319,4 +319,16 @@ export const draftPostsRelations = relations(draftPosts, ({ one }) => ({
     fields: [draftPosts.authorId],
     references: [users.id],
   }),
+}));
+
+// Tournament Participants relations
+export const tournamentParticipantsRelations = relations(tournamentParticipants, ({ one }) => ({
+  tournament: one(tournaments, {
+    fields: [tournamentParticipants.tournamentId],
+    references: [tournaments.id],
+  }),
+  team: one(teams, {
+    fields: [tournamentParticipants.teamId],
+    references: [teams.id],
+  }),
 })); 
