@@ -7,9 +7,15 @@ router.get('/live', gameController.getLiveGames);
 router.get('/team/:teamId/stats', gameController.getTeamStats);
 router.get('/player/steam/:steamId', gameController.getSteamPlayerStats);
 router.get('/player/faceit/:faceitId', gameController.getFaceitPlayerStats);
+// Rotas alternativas para compatibilidade com script de teste
+router.get('/steam-stats/:steamId', gameController.getSteamPlayerStats);
+router.get('/faceit-stats/:faceitId', gameController.getFaceitPlayerStats);
 // Rotas protegidas (apenas admins/moderadores)
 router.put('/:gameId/score', protect, gameController.updateGameScore);
 // 🔥 NOVAS ROTAS - Resultados FILTRADOS (apenas equipas registadas)
+router.get('/live-matches', gameController.getLiveMatches);
+router.get('/registered-teams', gameController.getRegisteredTeams);
+router.get('/registered-teams-history', gameController.getRegisteredTeamsHistory);
 router.get('/matches/live', gameController.getLiveMatches);
 router.get('/matches/recent', gameController.getRecentMatches);
 router.get('/matches/history', gameController.getRegisteredTeamsHistory);

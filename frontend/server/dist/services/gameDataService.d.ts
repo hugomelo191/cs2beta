@@ -38,6 +38,14 @@ declare class GameDataService {
     updateGameScore(gameId: string, score1: number, score2: number): Promise<void>;
     getSteamPlayerStats(steamId: string): Promise<any>;
     getFaceitPlayerStats(faceitId: string): Promise<any>;
+    /**
+     * 🔥 NOVO: Dados simulados para Steam quando não há API configurada
+     */
+    private getSimulatedSteamStats;
+    /**
+     * 🔥 NOVO: Dados simulados para Faceit quando não há API configurada
+     */
+    private getSimulatedFaceitStats;
     startPolling(): void;
 }
 export declare const gameDataService: GameDataService;

@@ -526,7 +526,7 @@ export declare const NewsSchema: z.ZodObject<{
     content?: string;
     author?: string;
     image?: string;
-    category?: "player" | "team" | "tournament" | "general";
+    category?: "team" | "player" | "tournament" | "general";
     tags?: string[];
     views?: number;
     readTime?: number;
@@ -542,7 +542,7 @@ export declare const NewsSchema: z.ZodObject<{
     content?: string;
     author?: string;
     image?: string;
-    category?: "player" | "team" | "tournament" | "general";
+    category?: "team" | "player" | "tournament" | "general";
     tags?: string[];
     views?: number;
     readTime?: number;
@@ -565,7 +565,7 @@ export declare const CreateNewsSchema: z.ZodObject<{
     excerpt?: string;
     content?: string;
     author?: string;
-    category?: "player" | "team" | "tournament" | "general";
+    category?: "team" | "player" | "tournament" | "general";
     tags?: string[];
     readTime?: number;
     isPublished?: boolean;
@@ -575,7 +575,7 @@ export declare const CreateNewsSchema: z.ZodObject<{
     excerpt?: string;
     content?: string;
     author?: string;
-    category?: "player" | "team" | "tournament" | "general";
+    category?: "team" | "player" | "tournament" | "general";
     tags?: string[];
     readTime?: number;
     isPublished?: boolean;
@@ -599,7 +599,7 @@ export declare const UpdateNewsSchema: z.ZodObject<{
     content?: string;
     author?: string;
     image?: string;
-    category?: "player" | "team" | "tournament" | "general";
+    category?: "team" | "player" | "tournament" | "general";
     tags?: string[];
     readTime?: number;
     isPublished?: boolean;
@@ -611,7 +611,7 @@ export declare const UpdateNewsSchema: z.ZodObject<{
     content?: string;
     author?: string;
     image?: string;
-    category?: "player" | "team" | "tournament" | "general";
+    category?: "team" | "player" | "tournament" | "general";
     tags?: string[];
     readTime?: number;
     isPublished?: boolean;

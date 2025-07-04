@@ -295,4 +295,15 @@ export const draftPostsRelations = relations(draftPosts, ({ one }) => ({
         references: [users.id],
     }),
 }));
+// Tournament Participants relations
+export const tournamentParticipantsRelations = relations(tournamentParticipants, ({ one }) => ({
+    tournament: one(tournaments, {
+        fields: [tournamentParticipants.tournamentId],
+        references: [tournaments.id],
+    }),
+    team: one(teams, {
+        fields: [tournamentParticipants.teamId],
+        references: [teams.id],
+    }),
+}));
 //# sourceMappingURL=schema.js.map

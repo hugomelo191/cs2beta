@@ -30,12 +30,22 @@ declare class RegisteredTeamsService {
     isTeamOrPlayerRegistered(teamName: string, playerIds?: string[]): Promise<RegisteredTeam | null>;
     /**
      * 🔥 Filtra matches ao vivo apenas das equipas registadas
+     * ATUALIZADO: Não tenta conectar a APIs externas se não há Faceit configurado
      */
     getFilteredLiveMatches(): Promise<FilteredMatchResult[]>;
     /**
+     * 🔥 NOVO: Retorna dados locais quando não há Faceit configurado
+     */
+    private getLocalMatchesData;
+    /**
      * 🔥 Busca histórico de matches apenas das equipas registadas
+     * ATUALIZADO: Não tenta conectar a APIs externas se não há Faceit configurado
      */
     getFilteredMatchHistory(limit?: number): Promise<FilteredMatchResult[]>;
+    /**
+     * 🔥 NOVO: Retorna histórico local quando não há Faceit configurado
+     */
+    private getLocalHistoryData;
     /**
      * 🔥 Verifica se uma equipa tem jogadores registados
      */

@@ -129,13 +129,21 @@ declare class FaceitService {
      */
     getMatchStats(matchId: string): Promise<any | null>;
     /**
-     * 🔥 NOVO: Busca matches em direto de um jogador
+     * 🔥 NOVO: Busca matches ao vivo do jogador
      */
     getPlayerLiveMatches(playerId: string): Promise<FaceitLiveMatch[]>;
     /**
-     * 🔥 NOVO: Busca matches populares em direto
+     * 🔥 NOVO: Busca matches populares ao vivo
      */
     getPopularLiveMatches(): Promise<FaceitLiveMatch[]>;
+    /**
+     * 🔥 NOVO: Dados simulados para quando não há API configurada
+     */
+    private getSimulatedPlayerData;
+    private getSimulatedPlayerStats;
+    private getSimulatedMatchHistory;
+    private getSimulatedLiveMatches;
+    private getSimulatedPopularLiveMatches;
     /**
      * Verifica se um nickname existe no Faceit
      */

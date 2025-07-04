@@ -3542,4 +3542,8 @@ export declare const teamMembersRelations: import("drizzle-orm").Relations<"team
 export declare const draftPostsRelations: import("drizzle-orm").Relations<"draft_posts", {
     author: import("drizzle-orm").One<"users", true>;
 }>;
+export declare const tournamentParticipantsRelations: import("drizzle-orm").Relations<"tournament_participants", {
+    tournament: import("drizzle-orm").One<"tournaments", false>;
+    team: import("drizzle-orm").One<"teams", false>;
+}>;
 //# sourceMappingURL=schema.d.ts.map
