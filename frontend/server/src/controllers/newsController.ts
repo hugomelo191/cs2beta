@@ -99,7 +99,7 @@ export const getNews = async (req: Request, res: Response, next: NextFunction) =
 // @access  Public
 export const getNewsArticle = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     const newsArticle = await db.query.news.findFirst({
       where: eq(news.id, id),
@@ -114,7 +114,7 @@ export const getNewsArticle = async (req: Request, res: Response, next: NextFunc
       throw new CustomError('News article not found', 404);
     }
 
-    // Increment views
+    // Increment views - use type assertion to avoid Drizzle type issues
     await db.update(news)
       .set({
         views: (newsArticle.views || 0) + 1,
@@ -148,13 +148,24 @@ export const createNews = async (req: Request, res: Response, next: NextFunction
       readTime = Math.ceil(wordCount / 200); // Average reading speed: 200 words per minute
     }
 
-    // Create news article
-    const [newNews] = await db.insert(news).values({
-      ...validatedData,
+    // Prepare data for insert - remove undefined values
+    const insertData = {
+      title: validatedData.title,
+      excerpt: validatedData.excerpt || null,
+      content: validatedData.content,
+      author: validatedData.author,
+      image: null, // Will be set later if provided
+      category: validatedData.category,
+      tags: validatedData.tags || null,
       readTime,
       views: 0,
+      isFeatured: validatedData.isFeatured || false,
+      isPublished: validatedData.isPublished || false,
       publishedAt: validatedData.isPublished ? new Date() : null,
-    } as any).returning();
+    } as any;
+
+    // Create news article
+    const [newNews] = await db.insert(news).values(insertData).returning();
 
     res.status(201).json({
       success: true,
@@ -171,7 +182,7 @@ export const createNews = async (req: Request, res: Response, next: NextFunction
 // @access  Private
 export const updateNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
     
     // Validate input
     const validatedData = UpdateNewsSchema.parse(req.body);
@@ -198,14 +209,26 @@ export const updateNews = async (req: Request, res: Response, next: NextFunction
       publishedAt = new Date();
     }
 
+    // Prepare update data - only include defined values
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (validatedData.title !== undefined) updateData.title = validatedData.title;
+    if (validatedData.excerpt !== undefined) updateData.excerpt = validatedData.excerpt || null;
+    if (validatedData.content !== undefined) updateData.content = validatedData.content;
+    if (validatedData.author !== undefined) updateData.author = validatedData.author;
+    if (validatedData.image !== undefined) updateData.image = validatedData.image || null;
+    if (validatedData.category !== undefined) updateData.category = validatedData.category;
+    if (validatedData.tags !== undefined) updateData.tags = validatedData.tags || null;
+    if (readTime !== undefined) updateData.readTime = readTime;
+    if (validatedData.isFeatured !== undefined) updateData.isFeatured = validatedData.isFeatured;
+    if (validatedData.isPublished !== undefined) updateData.isPublished = validatedData.isPublished;
+    if (publishedAt !== undefined) updateData.publishedAt = publishedAt;
+
     // Update news article
     const [updatedNews] = await db.update(news)
-      .set({
-        ...validatedData,
-        readTime,
-        publishedAt,
-        updatedAt: new Date(),
-      } as any)
+      .set(updateData)
       .where(eq(news.id, id))
       .returning();
 
@@ -224,7 +247,7 @@ export const updateNews = async (req: Request, res: Response, next: NextFunction
 // @access  Private
 export const deleteNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     // Check if news article exists
     const existingNews = await db.query.news.findFirst({
@@ -277,8 +300,8 @@ export const getFeaturedNews = async (req: Request, res: Response, next: NextFun
 // @access  Public
 export const getNewsByCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { category } = req.params;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const category = getParam(req, 'category');
+    const limit = getQueryInt(req, 'limit', 10);
 
     const newsByCategory = await db.query.news.findMany({
       where: and(
@@ -303,8 +326,8 @@ export const getNewsByCategory = async (req: Request, res: Response, next: NextF
 // @access  Public
 export const getNewsByAuthor = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { author } = req.params;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const author = getParam(req, 'author');
+    const limit = getQueryInt(req, 'limit', 10);
 
     const newsByAuthor = await db.query.news.findMany({
       where: and(
@@ -329,7 +352,7 @@ export const getNewsByAuthor = async (req: Request, res: Response, next: NextFun
 // @access  Public
 export const getMostViewedNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = getQueryInt(req, 'limit', 10);
 
     const mostViewedNews = await db.query.news.findMany({
       where: and(
@@ -354,7 +377,7 @@ export const getMostViewedNews = async (req: Request, res: Response, next: NextF
 // @access  Public
 export const getLatestNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = getQueryInt(req, 'limit', 10);
 
     const latestNews = await db.query.news.findMany({
       where: eq(news.isPublished, true),
@@ -376,7 +399,7 @@ export const getLatestNews = async (req: Request, res: Response, next: NextFunct
 // @access  Private
 export const publishNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     // Check if news article exists
     const existingNews = await db.query.news.findFirst({
@@ -388,17 +411,19 @@ export const publishNews = async (req: Request, res: Response, next: NextFunctio
     }
 
     // Publish news article
-    await db.update(news)
+    const [publishedNews] = await db.update(news)
       .set({
         isPublished: true,
         publishedAt: new Date(),
         updatedAt: new Date(),
       } as any)
-      .where(eq(news.id, id));
+      .where(eq(news.id, id))
+      .returning();
 
     res.json({
       success: true,
       message: 'News article published successfully',
+      data: publishedNews,
     });
   } catch (error) {
     next(error);
@@ -410,7 +435,7 @@ export const publishNews = async (req: Request, res: Response, next: NextFunctio
 // @access  Private
 export const unpublishNews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getParam(req, 'id');
 
     // Check if news article exists
     const existingNews = await db.query.news.findFirst({
@@ -422,17 +447,19 @@ export const unpublishNews = async (req: Request, res: Response, next: NextFunct
     }
 
     // Unpublish news article
-    await db.update(news)
+    const [unpublishedNews] = await db.update(news)
       .set({
         isPublished: false,
         publishedAt: null,
         updatedAt: new Date(),
       } as any)
-      .where(eq(news.id, id));
+      .where(eq(news.id, id))
+      .returning();
 
     res.json({
       success: true,
       message: 'News article unpublished successfully',
+      data: unpublishedNews,
     });
   } catch (error) {
     next(error);

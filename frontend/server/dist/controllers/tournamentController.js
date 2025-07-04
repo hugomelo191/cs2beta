@@ -31,11 +31,32 @@ export const getTournaments = async (req, res, next) => {
         // Get valid sort columns
         const validSortColumns = ['startDate', 'endDate', 'name', 'prizePool', 'createdAt'];
         const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'startDate';
+        // Safe ordering with proper type checking
+        let orderByClause;
+        switch (sortColumn) {
+            case 'startDate':
+                orderByClause = sortOrder === 'desc' ? desc(tournaments.startDate) : asc(tournaments.startDate);
+                break;
+            case 'endDate':
+                orderByClause = sortOrder === 'desc' ? desc(tournaments.endDate) : asc(tournaments.endDate);
+                break;
+            case 'name':
+                orderByClause = sortOrder === 'desc' ? desc(tournaments.name) : asc(tournaments.name);
+                break;
+            case 'prizePool':
+                orderByClause = sortOrder === 'desc' ? desc(tournaments.prizePool) : asc(tournaments.prizePool);
+                break;
+            case 'createdAt':
+                orderByClause = sortOrder === 'desc' ? desc(tournaments.createdAt) : asc(tournaments.createdAt);
+                break;
+            default:
+                orderByClause = asc(tournaments.startDate);
+        }
         const allTournaments = await db.query.tournaments.findMany({
             where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
             offset,
             limit,
-            orderBy: sortOrder === 'desc' ? desc(tournaments[sortColumn]) : asc(tournaments[sortColumn]),
+            orderBy: orderByClause,
         });
         // Count total tournaments
         const totalTournaments = await db.query.tournaments.findMany({
@@ -116,7 +137,7 @@ export const createTournament = async (req, res, next) => {
             currentTeams: 0,
             format: validatedData.format,
             rules: validatedData.rules || null,
-            prizePool: validatedData.prizePool?.toString() || null,
+            prizePool: validatedData.prizePool ? validatedData.prizePool.toString() : null,
             currency: validatedData.currency,
             status: validatedData.status || 'upcoming',
             country: validatedData.country || null,
@@ -163,7 +184,7 @@ export const updateTournament = async (req, res, next) => {
             maxTeams: validatedData.maxTeams || existingTournament.maxTeams,
             format: validatedData.format || existingTournament.format,
             rules: validatedData.rules || existingTournament.rules,
-            prizePool: validatedData.prizePool?.toString() || existingTournament.prizePool,
+            prizePool: validatedData.prizePool ? validatedData.prizePool.toString() : existingTournament.prizePool,
             currency: validatedData.currency || existingTournament.currency,
             status: validatedData.status || existingTournament.status,
             country: validatedData.country || existingTournament.country,

@@ -46,11 +46,33 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
     const validSortColumns = ['startDate', 'endDate', 'name', 'prizePool', 'createdAt'];
     const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'startDate';
 
+    // Safe ordering with proper type checking
+    let orderByClause;
+    switch (sortColumn) {
+      case 'startDate':
+        orderByClause = sortOrder === 'desc' ? desc(tournaments.startDate) : asc(tournaments.startDate);
+        break;
+      case 'endDate':
+        orderByClause = sortOrder === 'desc' ? desc(tournaments.endDate) : asc(tournaments.endDate);
+        break;
+      case 'name':
+        orderByClause = sortOrder === 'desc' ? desc(tournaments.name) : asc(tournaments.name);
+        break;
+      case 'prizePool':
+        orderByClause = sortOrder === 'desc' ? desc(tournaments.prizePool) : asc(tournaments.prizePool);
+        break;
+      case 'createdAt':
+        orderByClause = sortOrder === 'desc' ? desc(tournaments.createdAt) : asc(tournaments.createdAt);
+        break;
+      default:
+        orderByClause = asc(tournaments.startDate);
+    }
+
     const allTournaments = await db.query.tournaments.findMany({
       where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
       offset,
       limit,
-      orderBy: sortOrder === 'desc' ? desc(tournaments[sortColumn as keyof typeof tournaments] as any) : asc(tournaments[sortColumn as keyof typeof tournaments] as any),
+      orderBy: orderByClause,
     });
 
     // Count total tournaments
@@ -141,7 +163,7 @@ export const createTournament = async (req: Request, res: Response, next: NextFu
       currentTeams: 0,
       format: validatedData.format,
       rules: validatedData.rules || null,
-      prizePool: validatedData.prizePool?.toString() || null,
+      prizePool: validatedData.prizePool ? validatedData.prizePool.toString() : null,
       currency: validatedData.currency,
       status: validatedData.status || 'upcoming',
       country: validatedData.country || null,
@@ -193,7 +215,7 @@ export const updateTournament = async (req: Request, res: Response, next: NextFu
         maxTeams: validatedData.maxTeams || existingTournament.maxTeams,
         format: validatedData.format || existingTournament.format,
         rules: validatedData.rules || existingTournament.rules,
-        prizePool: validatedData.prizePool?.toString() || existingTournament.prizePool,
+        prizePool: validatedData.prizePool ? validatedData.prizePool.toString() : existingTournament.prizePool,
         currency: validatedData.currency || existingTournament.currency,
         status: validatedData.status || existingTournament.status,
         country: validatedData.country || existingTournament.country,

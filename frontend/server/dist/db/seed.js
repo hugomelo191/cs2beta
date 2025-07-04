@@ -209,7 +209,7 @@ async function seed() {
                 country: 'pt',
                 languages: ['pt', 'en'],
                 followers: 15420,
-                rating: 4.8,
+                rating: 5,
                 experience: '5 anos',
                 bio: 'Analista principal da scene portuguesa de CS2',
                 socials: {
