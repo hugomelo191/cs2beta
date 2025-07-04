@@ -465,7 +465,7 @@ O formato será Double Elimination, com mapas: de_dust2, de_mirage, de_inferno, 
         country: 'pt',
         languages: ['pt', 'en'],
         followers: 8500,
-        rating: 4.8,
+        rating: 5,
         experience: '5 anos',
         socials: {
           twitter: 'https://twitter.com/casterpt',
