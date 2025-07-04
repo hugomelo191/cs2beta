@@ -1,5 +1,5 @@
 import { db } from '../db/connection.js';
-import { tournaments, tournamentParticipants } from '../db/schema.js';
+import { tournaments, teams, tournamentParticipants } from '../db/schema.js';
 import { eq, desc, asc, like, and, or, gte } from 'drizzle-orm';
 import { CustomError } from '../middleware/errorHandler.js';
 import { CreateTournamentSchema, UpdateTournamentSchema } from '../types/index.js';
@@ -36,19 +36,6 @@ export const getTournaments = async (req, res, next) => {
             offset,
             limit,
             orderBy: sortOrder === 'desc' ? desc(tournaments[sortColumn]) : asc(tournaments[sortColumn]),
-            with: {
-                participants: {
-                    with: {
-                        team: {
-                            columns: {
-                                id: true,
-                                name: true,
-                                logo: true,
-                            },
-                        },
-                    },
-                },
-            },
         });
         // Count total tournaments
         const totalTournaments = await db.query.tournaments.findMany({
@@ -80,21 +67,30 @@ export const getTournament = async (req, res, next) => {
         const id = getParam(req, 'id');
         const tournament = await db.query.tournaments.findFirst({
             where: eq(tournaments.id, id),
-            with: {
-                participants: {
-                    with: {
-                        team: true,
-                    },
-                },
-            },
         });
         if (!tournament) {
             throw new CustomError('Tournament not found', 404);
         }
+        // Get participants separately
+        const participants = await db.query.tournamentParticipants.findMany({
+            where: eq(tournamentParticipants.tournamentId, id),
+        });
+        // Get team details for participants
+        const teamIds = participants.map(p => p.teamId).filter(Boolean);
+        const teamsData = teamIds.length > 0 ? await db.query.teams.findMany({
+            where: or(...teamIds.map(id => eq(teams.id, id))),
+        }) : [];
+        const tournamentWithParticipants = {
+            ...tournament,
+            participants: participants.map(participant => ({
+                ...participant,
+                team: teamsData.find(team => team.id === participant.teamId),
+            })),
+        };
         res.json({
             success: true,
             data: {
-                tournament,
+                tournament: tournamentWithParticipants,
             },
         });
     }

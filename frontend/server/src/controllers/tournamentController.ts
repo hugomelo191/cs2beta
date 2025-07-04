@@ -51,19 +51,6 @@ export const getTournaments = async (req: Request, res: Response, next: NextFunc
       offset,
       limit,
       orderBy: sortOrder === 'desc' ? desc(tournaments[sortColumn as keyof typeof tournaments] as any) : asc(tournaments[sortColumn as keyof typeof tournaments] as any),
-      with: {
-        participants: {
-          with: {
-            team: {
-              columns: {
-                id: true,
-                name: true,
-                logo: true,
-              },
-            },
-          },
-        },
-      },
     });
 
     // Count total tournaments
@@ -99,23 +86,35 @@ export const getTournament = async (req: Request, res: Response, next: NextFunct
 
     const tournament = await db.query.tournaments.findFirst({
       where: eq(tournaments.id, id),
-      with: {
-        participants: {
-          with: {
-            team: true,
-          },
-        },
-      },
     });
 
     if (!tournament) {
       throw new CustomError('Tournament not found', 404);
     }
 
+    // Get participants separately
+    const participants = await db.query.tournamentParticipants.findMany({
+      where: eq(tournamentParticipants.tournamentId, id),
+    });
+
+    // Get team details for participants
+    const teamIds = participants.map(p => p.teamId).filter(Boolean);
+    const teamsData = teamIds.length > 0 ? await db.query.teams.findMany({
+      where: or(...teamIds.map(id => eq(teams.id, id))),
+    }) : [];
+
+    const tournamentWithParticipants = {
+      ...tournament,
+      participants: participants.map(participant => ({
+        ...participant,
+        team: teamsData.find(team => team.id === participant.teamId),
+      })),
+    };
+
     res.json({
       success: true,
       data: {
-        tournament,
+        tournament: tournamentWithParticipants,
       },
     });
   } catch (error) {
