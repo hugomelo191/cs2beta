@@ -1,7 +1,7 @@
-import { db } from '../db/connection';
-import { teams, players } from '../db/schema';
+import { db } from '../db/connection.js';
+import { teams, players } from '../db/schema.js';
 import { eq, and, or, ilike } from 'drizzle-orm';
-import { faceitService, FaceitMatch, FaceitLiveMatch } from './faceitService';
+import { faceitService, FaceitMatch, FaceitLiveMatch } from './faceitService.js';
 
 interface RegisteredTeam {
   id: string;

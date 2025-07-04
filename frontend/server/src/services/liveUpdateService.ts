@@ -1,5 +1,5 @@
-import { faceitService } from './faceitService';
-import { registeredTeamsService } from './registeredTeamsService';
+import { faceitService } from './faceitService.js';
+import { registeredTeamsService } from './registeredTeamsService.js';
 
 interface LiveUpdate {
   type: string;

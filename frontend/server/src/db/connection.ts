@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from './schema';
+import * as schema from './schema.js';
 import * as dotenv from 'dotenv';
 
 // Carregar variáveis de ambiente
@@ -22,13 +22,20 @@ export const db = drizzle(sql, { schema });
 let redis: any = null;
 try {
   // Só importa Redis se estiver disponível
-  const Redis = require('ioredis');
-  redis = new Redis({
-    host: 'localhost',
-    port: 6379,
-    retryDelayOnFailover: 100,
-    maxRetriesPerRequest: 3,
-    lazyConnect: true,
+  const { createClient } = require('redis');
+  redis = createClient({
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    socket: {
+      reconnectDelay: 100,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+    },
+  });
+  
+  // Conectar ao Redis
+  redis.connect().catch((err: any) => {
+    console.log('Redis não disponível - usando cache em memória:', err.message);
+    redis = null;
   });
 } catch (error) {
   console.log('Redis não disponível - usando cache em memória');

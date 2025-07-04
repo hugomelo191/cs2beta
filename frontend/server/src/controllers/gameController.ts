@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { gameDataService } from '../services/gameDataService';
-import { faceitService } from '../services/faceitService';
-import { registeredTeamsService } from '../services/registeredTeamsService';
+import { gameDataService } from '../services/gameDataService.js';
+import { faceitService } from '../services/faceitService.js';
+import { registeredTeamsService } from '../services/registeredTeamsService.js';
 
 export const gameController = {
   // Buscar jogos ao vivo
