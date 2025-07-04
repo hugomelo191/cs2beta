@@ -4,7 +4,7 @@
 echo "🔗 Ligando ao servidor Contabo..."
 
 # Configurações do servidor (ajustar conforme necessário)
-SERVER_IP="your-contabo-server-ip"
+SERVER_IP="194.163.165.133"
 USERNAME="root"
 SSH_KEY_PATH="~/.ssh/id_rsa"
 

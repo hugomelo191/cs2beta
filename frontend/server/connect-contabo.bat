@@ -2,7 +2,7 @@
 echo 🔗 Ligando ao servidor Contabo...
 
 REM Configurações do servidor (ajustar conforme necessário)
-set SERVER_IP=your-contabo-server-ip
+set SERVER_IP=194.163.165.133
 set USERNAME=root
 set SSH_KEY_PATH=~/.ssh/id_rsa
 
